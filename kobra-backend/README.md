@@ -66,13 +66,15 @@ Cambia estas contraseñas o crea usuarios nuevos vía `POST /auth/register` ante
 - `POST /auth/register` — crea un usuario (pensado para el setup inicial)
 - `GET /health` — chequeo de vida, sin autenticación
 - `GET/POST/PATCH/DELETE /clientes` — ADMIN y VENDEDOR pueden ver/crear clientes; solo ADMIN puede editar/eliminar
-- `GET/POST/PATCH/DELETE /productos` — todos pueden ver (cada producto incluye sus variantes anidadas); solo ADMIN puede crear/editar/eliminar
+- `GET/POST/PATCH/DELETE /productos` — todos pueden ver (cada producto incluye sus variantes anidadas); solo ADMIN puede crear/editar/eliminar. Eliminar un producto borra también sus variantes (en transacción), salvo que alguna ya tenga ventas registradas, en cuyo caso falla con 400 y no borra nada.
 - `POST /productos/:productoId/variantes` — solo ADMIN, crea una variante (nombre + precio) para ese producto
 - `PATCH/DELETE /variantes/:id` — solo ADMIN, edita o elimina una variante existente
 - `POST /ventas` — crea una venta con sus detalles, cada detalle referencia una `varianteId` (el total se calcula en el backend a partir del precio actual de cada variante)
 - `GET /ventas` — ADMIN ve todas (filtros `?vendedorId=&clienteId=&estado=`), VENDEDOR solo ve las suyas
 - `GET /ventas/:id` — detalle de una venta
-- `PATCH /ventas/:id/estado` — cambia el estado de una venta (`PENDIENTE`, `POR_PAGAR`, `PAGADO`, `CANCELADO`)
+- `PATCH /ventas/:id/estado` — cambia el estado de una venta (`PENDIENTE`, `POR_PAGAR`, `PAGADO`, `CANCELADO`). Esto es **cancelar** una venta (pasarla a `CANCELADO`), no borrarla.
+- `DELETE /ventas/:id` — **elimina** la venta y sus detalles. ADMIN puede eliminar cualquiera; VENDEDOR solo las suyas. Distinto de cancelar: esto borra el registro por completo y no se puede deshacer.
+- `GET /estadisticas` — solo ADMIN. Devuelve `totalVentas`, `totalFacturado`, `topClientes` (ranking por cantidad de ventas, con productos comprados y total gastado) y `topProductos` (ranking por unidades vendidas). Las ventas `CANCELADO` no se cuentan. Acepta filtros opcionales `?desde=&hasta=` (fechas ISO 8601) para acotar por rango de `Venta.fecha`; la app calcula esos rangos a partir de presets (hoy, esta semana, este mes, este año, etc.).
 
 Todos los endpoints salvo `/health`, `/auth/login` y `/auth/register` requieren el header `Authorization: Bearer <token>`.
 

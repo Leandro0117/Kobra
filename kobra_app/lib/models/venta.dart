@@ -10,6 +10,12 @@ EstadoVenta estadoFromString(String value) {
   );
 }
 
+/// Ventas que todavía requieren acción (cobrar, entregar, etc.).
+const estadosEnCurso = [EstadoVenta.PENDIENTE, EstadoVenta.POR_PAGAR];
+
+/// Ventas ya cerradas, sea porque se pagaron o porque se cancelaron.
+const estadosHistorial = [EstadoVenta.PAGADO, EstadoVenta.CANCELADO];
+
 String estadoLabel(EstadoVenta estado) {
   switch (estado) {
     case EstadoVenta.PENDIENTE:

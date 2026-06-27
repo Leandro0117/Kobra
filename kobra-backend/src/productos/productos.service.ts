@@ -38,11 +38,17 @@ export class ProductosService {
   async remove(id: number) {
     await this.findOne(id);
     try {
-      return await this.prisma.producto.delete({ where: { id } });
+      // Si el producto tiene variantes sin ventas asociadas, se eliminan junto con él.
+      // Si alguna variante sí tiene ventas, la transacción falla completa (no se borra nada).
+      await this.prisma.$transaction([
+        this.prisma.variante.deleteMany({ where: { productoId: id } }),
+        this.prisma.producto.delete({ where: { id } }),
+      ]);
+      return { id };
     } catch (error) {
       if (esErrorDeForeignKey(error)) {
         throw new BadRequestException(
-          'No se puede eliminar el producto porque está en ventas registradas',
+          'No se puede eliminar el producto porque una o más de sus variantes está en ventas registradas',
         );
       }
       throw error;

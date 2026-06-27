@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { VentasService } from './ventas.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateEstadoVentaDto } from './dto/update-estado-venta.dto';
@@ -32,5 +42,10 @@ export class VentasController {
     @CurrentUser() usuario: UsuarioActual,
   ) {
     return this.ventasService.actualizarEstado(id, dto, usuario);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() usuario: UsuarioActual) {
+    return this.ventasService.remove(id, usuario);
   }
 }

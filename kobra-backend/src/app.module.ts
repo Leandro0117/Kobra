@@ -7,6 +7,7 @@ import { ClientesModule } from './clientes/clientes.module';
 import { ProductosModule } from './productos/productos.module';
 import { VariantesModule } from './variantes/variantes.module';
 import { VentasModule } from './ventas/ventas.module';
+import { EstadisticasModule } from './estadisticas/estadisticas.module';
 import { HealthModule } from './health/health.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
@@ -19,6 +20,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     ProductosModule,
     VariantesModule,
     VentasModule,
+    EstadisticasModule,
     HealthModule,
   ],
   providers: [

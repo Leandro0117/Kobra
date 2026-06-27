@@ -115,4 +115,38 @@ class ProductosProvider extends ChangeNotifier with CargaLentaMixin {
       return false;
     }
   }
+
+  Future<bool> eliminar(int id) async {
+    _error = null;
+    try {
+      await _service.eliminar(id);
+      _productos = _productos.where((p) => p.id != id).toList();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Elimina varios productos. Devuelve un mapa id -> mensaje de error
+  /// (null si ese producto se eliminó correctamente), para que la pantalla
+  /// pueda mostrar un resumen de qué falló y por qué.
+  Future<Map<int, String?>> eliminarVarios(List<int> ids) async {
+    final resultados = <int, String?>{};
+    for (final id in ids) {
+      try {
+        await _service.eliminar(id);
+        resultados[id] = null;
+      } on ApiException catch (e) {
+        resultados[id] = e.mensaje;
+      }
+    }
+
+    final idsEliminados = resultados.entries.where((e) => e.value == null).map((e) => e.key);
+    _productos = _productos.where((p) => !idsEliminados.contains(p.id)).toList();
+    notifyListeners();
+    return resultados;
+  }
 }

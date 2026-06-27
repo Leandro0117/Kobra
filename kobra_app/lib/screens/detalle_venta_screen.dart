@@ -39,6 +39,45 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
     });
   }
 
+  Future<void> _eliminarVenta() async {
+    final venta = _venta;
+    if (venta == null) return;
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar venta'),
+        content: Text(
+          '¿Eliminar esta venta por \$${venta.total.toStringAsFixed(2)}? '
+          'Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    final ventasProvider = context.read<VentasProvider>();
+    final ok = await ventasProvider.eliminar(widget.ventaId);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.of(context).pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ventasProvider.error ?? 'No se pudo eliminar la venta')),
+      );
+    }
+  }
+
   Future<void> _cambiarEstado(EstadoVenta nuevoEstado) async {
     setState(() => _actualizandoEstado = true);
     final actualizada = await context.read<VentasProvider>().cambiarEstado(
@@ -60,7 +99,17 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Venta #${widget.ventaId}')),
+      appBar: AppBar(
+        title: Text('Venta #${widget.ventaId}'),
+        actions: [
+          if (_venta != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Eliminar venta',
+              onPressed: _eliminarVenta,
+            ),
+        ],
+      ),
       body: _cargando
           ? const EstadoCargando()
           : _error != null

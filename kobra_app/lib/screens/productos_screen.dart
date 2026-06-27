@@ -15,11 +15,35 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
+  bool _modoSeleccion = false;
+  final Set<int> _seleccionados = {};
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductosProvider>().cargar();
+    });
+  }
+
+  void _activarModoSeleccion() {
+    setState(() => _modoSeleccion = true);
+  }
+
+  void _salirModoSeleccion() {
+    setState(() {
+      _modoSeleccion = false;
+      _seleccionados.clear();
+    });
+  }
+
+  void _alternarSeleccion(int productoId) {
+    setState(() {
+      if (_seleccionados.contains(productoId)) {
+        _seleccionados.remove(productoId);
+      } else {
+        _seleccionados.add(productoId);
+      }
     });
   }
 
@@ -177,14 +201,129 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
   }
 
+  /// Texto de advertencia cuando el/los producto(s) a eliminar tienen variantes:
+  /// se borrarán junto con el producto (a menos que alguna ya tenga ventas).
+  String _advertenciaVariantes(List<Producto> productos) {
+    final totalVariantes = productos.fold<int>(0, (s, p) => s + p.variantes.length);
+    if (totalVariantes == 0) return '';
+    final conVariantes = productos.where((p) => p.variantes.isNotEmpty).length;
+    return productos.length == 1
+        ? '\n\nEste producto tiene ${productos.first.variantes.length} variante(s); '
+            'se eliminarán junto con él (salvo que alguna ya tenga ventas registradas, '
+            'en cuyo caso no se podrá eliminar nada).'
+        : '\n\n$conVariantes de ellos tienen variantes ($totalVariantes en total); '
+            'se eliminarán junto con su producto (salvo que alguna ya tenga ventas registradas, '
+            'en cuyo caso ese producto en particular no se podrá eliminar).';
+  }
+
+  Future<void> _confirmarEliminarProducto(Producto producto) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar producto'),
+        content: Text(
+          '¿Eliminar "${producto.nombre}"?${_advertenciaVariantes([producto])}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      final productosProvider = context.read<ProductosProvider>();
+      final ok = await productosProvider.eliminar(producto.id);
+      if (!mounted) return;
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(productosProvider.error ?? 'No se pudo eliminar el producto')),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmarEliminarSeleccionados(List<Producto> productosSeleccionados) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar productos seleccionados'),
+        content: Text(
+          '¿Eliminar ${productosSeleccionados.length} producto(s)?'
+          '${_advertenciaVariantes(productosSeleccionados)}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    final productosProvider = context.read<ProductosProvider>();
+    final ids = productosSeleccionados.map((p) => p.id).toList();
+    final resultados = await productosProvider.eliminarVarios(ids);
+    if (!mounted) return;
+
+    final exitosos = resultados.entries.where((e) => e.value == null).length;
+    final fallidos = resultados.entries.where((e) => e.value != null).toList();
+
+    String mensaje;
+    if (fallidos.isEmpty) {
+      mensaje = 'Se eliminaron $exitosos producto(s).';
+    } else {
+      final mensajesUnicos = fallidos.map((e) => e.value).toSet().join(' ');
+      mensaje = '$exitosos eliminado(s). ${fallidos.length} no se pudo(eron) eliminar: '
+          '$mensajesUnicos';
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+    _salirModoSeleccion();
+  }
+
   @override
   Widget build(BuildContext context) {
     final productosProvider = context.watch<ProductosProvider>();
     final esAdmin = context.watch<AuthProvider>().usuario?.rol == Rol.ADMIN;
+    final productosSeleccionados =
+        productosProvider.productos.where((p) => _seleccionados.contains(p.id)).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Productos')),
-      floatingActionButton: esAdmin
+      appBar: AppBar(
+        title: Text(_modoSeleccion ? '${_seleccionados.length} seleccionado(s)' : 'Productos'),
+        leading: _modoSeleccion
+            ? IconButton(icon: const Icon(Icons.close), onPressed: _salirModoSeleccion)
+            : null,
+        actions: [
+          if (_modoSeleccion)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Eliminar seleccionados',
+              onPressed: productosSeleccionados.isEmpty
+                  ? null
+                  : () => _confirmarEliminarSeleccionados(productosSeleccionados),
+            )
+          else if (esAdmin)
+            IconButton(
+              icon: const Icon(Icons.checklist),
+              tooltip: 'Seleccionar varios',
+              onPressed: _activarModoSeleccion,
+            ),
+        ],
+      ),
+      floatingActionButton: (esAdmin && !_modoSeleccion)
           ? FloatingActionButton(
               onPressed: () => _mostrarFormularioProducto(),
               tooltip: 'Nuevo producto',
@@ -211,15 +350,34 @@ class _ProductosScreenState extends State<ProductosScreen> {
               itemCount: productosProvider.productos.length,
               itemBuilder: (context, index) {
                 final producto = productosProvider.productos[index];
+                final seleccionado = _seleccionados.contains(producto.id);
                 return ExpansionTile(
-                  title: Text(producto.nombre),
-                  subtitle: Text('${producto.variantes.length} variante(s)'),
-                  trailing: esAdmin
-                      ? IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          onPressed: () => _mostrarFormularioProducto(existente: producto),
+                  leading: _modoSeleccion
+                      ? Checkbox(
+                          value: seleccionado,
+                          onChanged: (_) => _alternarSeleccion(producto.id),
                         )
                       : null,
+                  title: Text(producto.nombre),
+                  subtitle: Text('${producto.variantes.length} variante(s)'),
+                  trailing: _modoSeleccion
+                      ? null
+                      : esAdmin
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () =>
+                                      _mostrarFormularioProducto(existente: producto),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: () => _confirmarEliminarProducto(producto),
+                                ),
+                              ],
+                            )
+                          : null,
                   children: [
                     ...producto.variantes.map(
                       (v) => ListTile(

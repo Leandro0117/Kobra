@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/usuario.dart';
+import '../models/venta.dart';
 import '../providers/auth_provider.dart';
 import 'clientes_screen.dart';
 import 'productos_screen.dart';
 import 'nueva_venta_screen.dart';
 import 'ventas_screen.dart';
+import 'estadisticas_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -25,10 +27,27 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       _OpcionHome(
-        titulo: esAdmin ? 'Todas las ventas' : 'Mis ventas',
-        icono: Icons.receipt_long,
+        titulo: esAdmin ? 'Ventas en curso' : 'Mis ventas en curso',
+        icono: Icons.pending_actions_outlined,
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const VentasScreen()),
+          MaterialPageRoute(
+            builder: (_) => VentasScreen(
+              titulo: esAdmin ? 'Ventas en curso' : 'Mis ventas en curso',
+              estadosPermitidos: estadosEnCurso,
+            ),
+          ),
+        ),
+      ),
+      _OpcionHome(
+        titulo: esAdmin ? 'Historial de ventas' : 'Mi historial',
+        icono: Icons.history,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => VentasScreen(
+              titulo: esAdmin ? 'Historial de ventas' : 'Mi historial',
+              estadosPermitidos: estadosHistorial,
+            ),
+          ),
         ),
       ),
       _OpcionHome(
@@ -45,6 +64,14 @@ class HomeScreen extends StatelessWidget {
           MaterialPageRoute(builder: (_) => const ProductosScreen()),
         ),
       ),
+      if (esAdmin)
+        _OpcionHome(
+          titulo: 'Estadísticas',
+          icono: Icons.bar_chart_outlined,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const EstadisticasScreen()),
+          ),
+        ),
     ];
 
     return Scaffold(

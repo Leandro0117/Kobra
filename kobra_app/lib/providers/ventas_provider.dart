@@ -82,4 +82,18 @@ class VentasProvider extends ChangeNotifier with CargaLentaMixin {
       return null;
     }
   }
+
+  Future<bool> eliminar(int id) async {
+    _error = null;
+    try {
+      await _service.eliminar(id);
+      _ventas = _ventas.where((v) => v.id != id).toList();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return false;
+    }
+  }
 }

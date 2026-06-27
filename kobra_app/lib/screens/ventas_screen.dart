@@ -9,8 +9,14 @@ import '../services/ventas_service.dart';
 import '../widgets/estado_carga.dart';
 import 'detalle_venta_screen.dart';
 
+/// Pantalla de listado de ventas, reutilizada tanto para "en curso" como
+/// para "historial" — [estadosPermitidos] define qué subconjunto de
+/// estados se muestra (el filtro se aplica en el cliente, no en el backend).
 class VentasScreen extends StatefulWidget {
-  const VentasScreen({super.key});
+  final String titulo;
+  final List<EstadoVenta> estadosPermitidos;
+
+  const VentasScreen({super.key, required this.titulo, required this.estadosPermitidos});
 
   @override
   State<VentasScreen> createState() => _VentasScreenState();
@@ -29,10 +35,42 @@ class _VentasScreenState extends State<VentasScreen> {
     });
   }
 
-  void _aplicarFiltros() {
-    context.read<VentasProvider>().cargar(
-          filtro: FiltroVentas(estado: _filtroEstado, clienteId: _filtroClienteId),
+  void _aplicarFiltroCliente() {
+    context.read<VentasProvider>().cargar(filtro: FiltroVentas(clienteId: _filtroClienteId));
+  }
+
+  Future<void> _confirmarEliminar(Venta venta) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar venta'),
+        content: Text(
+          '¿Eliminar la venta de "${venta.cliente?.nombre ?? 'cliente #${venta.clienteId}'}" '
+          'por \$${venta.total.toStringAsFixed(2)}? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      final ventasProvider = context.read<VentasProvider>();
+      final ok = await ventasProvider.eliminar(venta.id);
+      if (!mounted) return;
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ventasProvider.error ?? 'No se pudo eliminar la venta')),
         );
+      }
+    }
   }
 
   @override
@@ -41,8 +79,13 @@ class _VentasScreenState extends State<VentasScreen> {
     final clientesProvider = context.watch<ClientesProvider>();
     final esAdmin = context.watch<AuthProvider>().usuario?.rol == Rol.ADMIN;
 
+    final ventasDelGrupo = ventasProvider.ventas
+        .where((v) => widget.estadosPermitidos.contains(v.estado))
+        .where((v) => _filtroEstado == null || v.estado == _filtroEstado)
+        .toList();
+
     return Scaffold(
-      appBar: AppBar(title: Text(esAdmin ? 'Todas las ventas' : 'Mis ventas')),
+      appBar: AppBar(title: Text(widget.titulo)),
       body: Column(
         children: [
           if (esAdmin)
@@ -60,14 +103,11 @@ class _VentasScreenState extends State<VentasScreen> {
                       ),
                       items: [
                         const DropdownMenuItem(value: null, child: Text('Todos')),
-                        ...EstadoVenta.values.map(
+                        ...widget.estadosPermitidos.map(
                           (e) => DropdownMenuItem(value: e, child: Text(estadoLabel(e))),
                         ),
                       ],
-                      onChanged: (e) {
-                        setState(() => _filtroEstado = e);
-                        _aplicarFiltros();
-                      },
+                      onChanged: (e) => setState(() => _filtroEstado = e),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -87,7 +127,7 @@ class _VentasScreenState extends State<VentasScreen> {
                       ],
                       onChanged: (id) {
                         setState(() => _filtroClienteId = id);
-                        _aplicarFiltros();
+                        _aplicarFiltroCliente();
                       },
                     ),
                   ),
@@ -106,16 +146,16 @@ class _VentasScreenState extends State<VentasScreen> {
                     onReintentar: () => ventasProvider.cargar(),
                   );
                 }
-                if (ventasProvider.ventas.isEmpty) {
-                  return const Center(child: Text('No hay ventas registradas todavía.'));
+                if (ventasDelGrupo.isEmpty) {
+                  return const Center(child: Text('No hay ventas para mostrar aquí.'));
                 }
                 return RefreshIndicator(
                   onRefresh: () => ventasProvider.cargar(),
                   child: ListView.separated(
-                    itemCount: ventasProvider.ventas.length,
+                    itemCount: ventasDelGrupo.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
-                      final venta = ventasProvider.ventas[index];
+                      final venta = ventasDelGrupo[index];
                       return ListTile(
                         title: Text(venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}'),
                         subtitle: Text(
@@ -123,9 +163,19 @@ class _VentasScreenState extends State<VentasScreen> {
                               ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
                               : estadoLabel(venta.estado),
                         ),
-                        trailing: Text(
-                          '\$${venta.total.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.titleMedium,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '\$${venta.total.toStringAsFixed(2)}',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              tooltip: 'Eliminar venta',
+                              onPressed: () => _confirmarEliminar(venta),
+                            ),
+                          ],
                         ),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(

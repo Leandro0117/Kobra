@@ -120,4 +120,13 @@ export class VentasService {
       },
     });
   }
+
+  async remove(id: number, usuario: UsuarioActual) {
+    const venta = await this.findOne(id, usuario);
+    await this.prisma.$transaction([
+      this.prisma.detalleVenta.deleteMany({ where: { ventaId: venta.id } }),
+      this.prisma.venta.delete({ where: { id: venta.id } }),
+    ]);
+    return { id: venta.id };
+  }
 }

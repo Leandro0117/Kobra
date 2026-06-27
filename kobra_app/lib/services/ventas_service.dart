@@ -50,4 +50,8 @@ class VentasService {
     );
     return Venta.fromJson(response.data!);
   }
+
+  Future<void> eliminar(int id) async {
+    await ApiClient.delete('/ventas/$id');
+  }
 }

@@ -27,4 +27,8 @@ class ProductosService {
     );
     return Producto.fromJson(response.data!);
   }
+
+  Future<void> eliminar(int id) async {
+    await ApiClient.delete('/productos/$id');
+  }
 }
