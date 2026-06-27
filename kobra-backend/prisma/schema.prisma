@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Usuario {
+  id       Int      @id @default(autoincrement())
+  nombre   String
+  email    String   @unique
+  password String
+  rol      Rol
+  ventas   Venta[]
+  creadoEn DateTime @default(now())
+}
+
+enum Rol {
+  ADMIN
+  VENDEDOR
+}
+
+model Cliente {
+  id       Int     @id @default(autoincrement())
+  nombre   String
+  telefono String?
+  ventas   Venta[]
+}
+
+model Producto {
+  id        Int        @id @default(autoincrement())
+  nombre    String
+  variantes Variante[]
+}
+
+model Variante {
+  id         Int            @id @default(autoincrement())
+  producto   Producto       @relation(fields: [productoId], references: [id])
+  productoId Int
+  nombre     String
+  precio     Float
+  detalles   DetalleVenta[]
+}
+
+model Venta {
+  id         Int            @id @default(autoincrement())
+  vendedor   Usuario        @relation(fields: [vendedorId], references: [id])
+  vendedorId Int
+  cliente    Cliente        @relation(fields: [clienteId], references: [id])
+  clienteId  Int
+  fecha      DateTime       @default(now())
+  estado     EstadoVenta    @default(PENDIENTE)
+  total      Float
+  detalles   DetalleVenta[]
+}
+
+enum EstadoVenta {
+  PENDIENTE
+  POR_PAGAR
+  PAGADO
+  CANCELADO
+}
+
+model DetalleVenta {
+  id             Int      @id @default(autoincrement())
+  venta          Venta    @relation(fields: [ventaId], references: [id])
+  ventaId        Int
+  variante       Variante @relation(fields: [varianteId], references: [id])
+  varianteId     Int
+  cantidad       Float
+  precioUnitario Float
+}
