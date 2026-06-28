@@ -7,6 +7,7 @@ class Variante {
   final int productoId;
   final String nombre;
   final double precio;
+  final double? costo;
   final Producto? producto;
 
   Variante({
@@ -14,6 +15,7 @@ class Variante {
     required this.productoId,
     required this.nombre,
     required this.precio,
+    this.costo,
     this.producto,
   });
 
@@ -23,6 +25,7 @@ class Variante {
       productoId: json['productoId'] as int,
       nombre: json['nombre'] as String,
       precio: (json['precio'] as num).toDouble(),
+      costo: json['costo'] != null ? (json['costo'] as num).toDouble() : null,
       producto: json['producto'] != null
           ? Producto.fromJson(json['producto'] as Map<String, dynamic>)
           : null,
@@ -33,5 +36,14 @@ class Variante {
   String nombreCompleto() {
     final base = producto?.nombre;
     return base != null ? '$base — $nombre' : nombre;
+  }
+
+  /// Ganancia estimada por unidad (precio de venta - costo). Null si no hay costo registrado.
+  double? get ganancia => costo != null ? precio - costo! : null;
+
+  /// Margen de ganancia en porcentaje sobre el precio de venta. Null si no hay costo o precio es 0.
+  double? get margenPorcentaje {
+    if (costo == null || precio == 0) return null;
+    return (ganancia! / precio) * 100;
   }
 }

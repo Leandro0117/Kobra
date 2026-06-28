@@ -75,10 +75,20 @@ class ProductosProvider extends ChangeNotifier with CargaLentaMixin {
     }
   }
 
-  Future<bool> agregarVariante(int productoId, String nombre, double precio) async {
+  Future<bool> agregarVariante(
+    int productoId,
+    String nombre,
+    double precio, {
+    double? costo,
+  }) async {
     _error = null;
     try {
-      await _variantesService.crear(productoId: productoId, nombre: nombre, precio: precio);
+      await _variantesService.crear(
+        productoId: productoId,
+        nombre: nombre,
+        precio: precio,
+        costo: costo,
+      );
       return _refrescarProducto(productoId);
     } on ApiException catch (e) {
       _error = e.mensaje;
@@ -92,10 +102,11 @@ class ProductosProvider extends ChangeNotifier with CargaLentaMixin {
     int varianteId, {
     String? nombre,
     double? precio,
+    double? costo,
   }) async {
     _error = null;
     try {
-      await _variantesService.actualizar(varianteId, nombre: nombre, precio: precio);
+      await _variantesService.actualizar(varianteId, nombre: nombre, precio: precio, costo: costo);
       return _refrescarProducto(productoId);
     } on ApiException catch (e) {
       _error = e.mensaje;

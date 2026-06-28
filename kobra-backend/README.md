@@ -22,7 +22,11 @@ Si en algún momento sospechas que las credenciales de Neon quedaron expuestas (
 
 `Usuario` (ADMIN | VENDEDOR) → `Venta` → `DetalleVenta` → `Variante`, y `Venta` → `Cliente`.
 
-`Producto` es solo el nombre base que agrupa (ej. "Yogurt griego"); cada combinación concreta y vendible (tamaño, topping, o ambos) es una `Variante` con su propio precio (ej. "250g sin topping", "250g mermelada de fresa", "500g arándanos"). Las ventas siempre apuntan a una `Variante`, nunca al producto directo — así no hay que resolver combinaciones en el momento de vender, ya quedan pre-registradas. Ver `prisma/schema.prisma` para el detalle completo.
+`Producto` es solo el nombre base que agrupa (ej. "Yogurt griego"); cada combinación concreta y vendible (tamaño, topping, o ambos) es una `Variante` con su propio precio (ej. "250g sin topping", "250g mermelada de fresa", "500g arándanos") y un `costo` opcional para estimar la ganancia (`precio - costo`). Las ventas siempre apuntan a una `Variante`, nunca al producto directo — así no hay que resolver combinaciones en el momento de vender, ya quedan pre-registradas.
+
+El lado de **Gastos** es un espejo del de Ventas, exclusivo de ADMIN: `Proveedor` (≈ Cliente), `Insumo` (≈ Producto, catálogo plano sin variantes), `Gasto` (≈ Venta, con una `categoria`: INSUMOS/EQUIPAMIENTO/SERVICIOS/TRANSPORTE/OTRO) y `DetalleGasto` (≈ DetalleVenta). A diferencia de las ventas, el precio unitario de un gasto no viene de un catálogo — lo ingresa quien registra la compra, porque varía de compra en compra.
+
+Ver `prisma/schema.prisma` para el detalle completo.
 
 ## Variables de entorno
 
@@ -75,6 +79,13 @@ Cambia estas contraseñas o crea usuarios nuevos vía `POST /auth/register` ante
 - `PATCH /ventas/:id/estado` — cambia el estado de una venta (`PENDIENTE`, `POR_PAGAR`, `PAGADO`, `CANCELADO`). Esto es **cancelar** una venta (pasarla a `CANCELADO`), no borrarla.
 - `DELETE /ventas/:id` — **elimina** la venta y sus detalles. ADMIN puede eliminar cualquiera; VENDEDOR solo las suyas. Distinto de cancelar: esto borra el registro por completo y no se puede deshacer.
 - `GET /estadisticas` — solo ADMIN. Devuelve `totalVentas`, `totalFacturado`, `topClientes` (ranking por cantidad de ventas, con productos comprados y total gastado) y `topProductos` (ranking por unidades vendidas). Las ventas `CANCELADO` no se cuentan. Acepta filtros opcionales `?desde=&hasta=` (fechas ISO 8601) para acotar por rango de `Venta.fecha`; la app calcula esos rangos a partir de presets (hoy, esta semana, este mes, este año, etc.).
+- `GET/POST/PATCH/DELETE /proveedores` — solo ADMIN.
+- `GET/POST/PATCH/DELETE /insumos` — solo ADMIN.
+- `POST /gastos` — solo ADMIN. Crea un gasto con sus detalles; el total se calcula en el backend a partir de `cantidad x precioUnitario` de cada detalle (el precio lo decide quien registra el gasto, no hay un precio "oficial" en el catálogo de insumos).
+- `GET /gastos` — solo ADMIN. Filtros opcionales `?proveedorId=&categoria=`.
+- `GET /gastos/:id` — detalle de un gasto.
+- `DELETE /gastos/:id` — elimina el gasto y sus detalles. No hay "cancelar" para gastos (no tienen estado; se asumen pagados al registrarse).
+- `GET /finanzas` — solo ADMIN. Devuelve `totalIngresos` (suma de ventas no canceladas), `totalEgresos` (suma de gastos), `balance` y `egresosPorCategoria`. Acepta los mismos filtros `?desde=&hasta=` que Estadísticas.
 
 Todos los endpoints salvo `/health`, `/auth/login` y `/auth/register` requieren el header `Authorization: Bearer <token>`.
 

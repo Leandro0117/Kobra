@@ -1,6 +1,6 @@
 # Kobra — Control de ventas
 
-Kobra es un MVP de control de ventas pensado para un equipo pequeño: varios vendedores registran sus ventas desde el celular (cada uno asignando cliente, productos y estado de pago) y un administrador puede ver todas las ventas de todos, desde cualquier lugar.
+Kobra es un MVP de control de ventas pensado para un equipo pequeño: varios vendedores registran sus ventas desde el celular (cada uno asignando cliente, productos y estado de pago) y un administrador puede ver todas las ventas de todos, desde cualquier lugar. El administrador además tiene un apartado de Gastos (compra de insumos, proveedores) y una vista de Finanzas que combina ingresos y egresos.
 
 El proyecto tiene dos partes:
 

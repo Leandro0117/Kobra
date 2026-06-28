@@ -8,6 +8,10 @@ import { ProductosModule } from './productos/productos.module';
 import { VariantesModule } from './variantes/variantes.module';
 import { VentasModule } from './ventas/ventas.module';
 import { EstadisticasModule } from './estadisticas/estadisticas.module';
+import { ProveedoresModule } from './proveedores/proveedores.module';
+import { InsumosModule } from './insumos/insumos.module';
+import { GastosModule } from './gastos/gastos.module';
+import { FinanzasModule } from './finanzas/finanzas.module';
 import { HealthModule } from './health/health.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
@@ -21,6 +25,10 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     VariantesModule,
     VentasModule,
     EstadisticasModule,
+    ProveedoresModule,
+    InsumosModule,
+    GastosModule,
+    FinanzasModule,
     HealthModule,
   ],
   providers: [

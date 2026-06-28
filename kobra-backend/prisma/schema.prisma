@@ -15,6 +15,7 @@ model Usuario {
   password String
   rol      Rol
   ventas   Venta[]
+  gastos   Gasto[]
   creadoEn DateTime @default(now())
 }
 
@@ -42,6 +43,7 @@ model Variante {
   productoId Int
   nombre     String
   precio     Float
+  costo      Float?
   detalles   DetalleVenta[]
 }
 
@@ -70,6 +72,55 @@ model DetalleVenta {
   ventaId        Int
   variante       Variante @relation(fields: [varianteId], references: [id])
   varianteId     Int
+  cantidad       Float
+  precioUnitario Float
+}
+
+// ===== Gastos (compra de insumos, proveedores, egresos en general) =====
+// Espejo del lado de Ventas: Proveedor ≈ Cliente, Insumo ≈ Producto (catálogo
+// plano, sin variantes), Gasto ≈ Venta, DetalleGasto ≈ DetalleVenta.
+// Toda esta sección es exclusiva de ADMIN.
+
+model Proveedor {
+  id       Int     @id @default(autoincrement())
+  nombre   String
+  telefono String?
+  gastos   Gasto[]
+}
+
+model Insumo {
+  id       Int            @id @default(autoincrement())
+  nombre   String
+  unidad   String?
+  detalles DetalleGasto[]
+}
+
+enum CategoriaGasto {
+  INSUMOS
+  EQUIPAMIENTO
+  SERVICIOS
+  TRANSPORTE
+  OTRO
+}
+
+model Gasto {
+  id          Int            @id @default(autoincrement())
+  usuario     Usuario        @relation(fields: [usuarioId], references: [id])
+  usuarioId   Int
+  proveedor   Proveedor      @relation(fields: [proveedorId], references: [id])
+  proveedorId Int
+  categoria   CategoriaGasto
+  fecha       DateTime       @default(now())
+  total       Float
+  detalles    DetalleGasto[]
+}
+
+model DetalleGasto {
+  id             Int    @id @default(autoincrement())
+  gasto          Gasto  @relation(fields: [gastoId], references: [id])
+  gastoId        Int
+  insumo         Insumo @relation(fields: [insumoId], references: [id])
+  insumoId       Int
   cantidad       Float
   precioUnitario Float
 }

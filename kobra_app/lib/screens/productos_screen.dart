@@ -100,6 +100,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
     final precioController = TextEditingController(
       text: existente != null ? existente.precio.toString() : '',
     );
+    final costoController = TextEditingController(
+      text: existente?.costo != null ? existente!.costo.toString() : '',
+    );
     final formKey = GlobalKey<FormState>();
 
     final guardar = await showDialog<bool>(
@@ -120,12 +123,25 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
               TextFormField(
                 controller: precioController,
-                decoration: const InputDecoration(labelText: 'Precio'),
+                decoration: const InputDecoration(labelText: 'Precio de venta al público'),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Requerido';
                   final parsed = double.tryParse(v);
                   if (parsed == null || parsed <= 0) return 'Precio inválido';
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: costoController,
+                decoration: const InputDecoration(
+                  labelText: 'Costo (opcional, para calcular ganancia)',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return null;
+                  final parsed = double.tryParse(v);
+                  if (parsed == null || parsed <= 0) return 'Costo inválido';
                   return null;
                 },
               ),
@@ -151,14 +167,18 @@ class _ProductosScreenState extends State<ProductosScreen> {
       final productosProvider = context.read<ProductosProvider>();
       final nombre = nombreController.text.trim();
       final precio = double.parse(precioController.text);
+      final costo = costoController.text.trim().isEmpty
+          ? null
+          : double.parse(costoController.text.trim());
 
       final ok = existente == null
-          ? await productosProvider.agregarVariante(producto.id, nombre, precio)
+          ? await productosProvider.agregarVariante(producto.id, nombre, precio, costo: costo)
           : await productosProvider.actualizarVariante(
               producto.id,
               existente.id,
               nombre: nombre,
               precio: precio,
+              costo: costo,
             );
 
       if (!mounted) return;
@@ -383,7 +403,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       (v) => ListTile(
                         contentPadding: const EdgeInsets.only(left: 32, right: 16),
                         title: Text(v.nombre),
-                        subtitle: Text('\$${v.precio.toStringAsFixed(2)}'),
+                        subtitle: Text(
+                          v.costo != null
+                              ? '\$${v.precio.toStringAsFixed(2)} · costo \$${v.costo!.toStringAsFixed(2)} '
+                                  '· ganancia \$${v.ganancia!.toStringAsFixed(2)} (${v.margenPorcentaje!.toStringAsFixed(0)}%)'
+                              : '\$${v.precio.toStringAsFixed(2)}',
+                        ),
                         trailing: esAdmin
                             ? Row(
                                 mainAxisSize: MainAxisSize.min,
