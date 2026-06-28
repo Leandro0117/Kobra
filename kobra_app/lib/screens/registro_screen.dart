@@ -1,53 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/usuario.dart';
 import '../providers/auth_provider.dart';
-import 'registro_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegistroScreen extends StatefulWidget {
+  const RegistroScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegistroScreen> createState() => _RegistroScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegistroScreenState extends State<RegistroScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-
-  // Si el login tarda más que esto, mostramos el aviso de servidor dormido
-  // (Render free tier) en vez de dejar el botón girando sin explicación.
-  bool _mostrarAvisoServidor = false;
+  Rol _rol = Rol.VENDEDOR;
 
   @override
   void dispose() {
+    _nombreController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _intentarLogin() async {
+  Future<void> _registrar() async {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
-    setState(() => _mostrarAvisoServidor = false);
-
-    Future.delayed(const Duration(seconds: 4), () {
-      if (authProvider.cargando && mounted) {
-        setState(() => _mostrarAvisoServidor = true);
-      }
-    });
-
-    final exito = await authProvider.login(
-      _emailController.text.trim(),
-      _passwordController.text,
+    final exito = await authProvider.registrar(
+      nombre: _nombreController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      rol: _rol,
     );
 
     if (!mounted) return;
-    setState(() => _mostrarAvisoServidor = false);
-
-    if (!exito && authProvider.error != null) {
+    if (exito) {
+      Navigator.of(context).pop();
+    } else if (authProvider.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(authProvider.error!)),
       );
@@ -59,6 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
+      appBar: AppBar(title: const Text('Crear cuenta')),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -70,23 +64,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.point_of_sale,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
+                    TextFormField(
+                      controller: _nombreController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) =>
+                          (value == null || value.trim().isEmpty) ? 'Ingresa tu nombre' : null,
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Kobra',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    Text(
-                      'Control de ventas',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -114,22 +102,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? 'Ingresa tu contraseña' : null,
-                      onFieldSubmitted: (_) => _intentarLogin(),
+                      validator: (value) => (value == null || value.length < 6)
+                          ? 'Mínimo 6 caracteres'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Tipo de cuenta', style: Theme.of(context).textTheme.bodyMedium),
+                    const SizedBox(height: 8),
+                    SegmentedButton<Rol>(
+                      segments: const [
+                        ButtonSegment(value: Rol.ADMIN, label: Text('Administrador')),
+                        ButtonSegment(value: Rol.VENDEDOR, label: Text('Empleado')),
+                      ],
+                      selected: {_rol},
+                      onSelectionChanged: (seleccion) =>
+                          setState(() => _rol = seleccion.first),
                     ),
                     const SizedBox(height: 24),
-                    if (_mostrarAvisoServidor)
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          'Conectando con el servidor, puede tardar unos segundos...',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontStyle: FontStyle.italic),
-                        ),
-                      ),
                     FilledButton(
-                      onPressed: authProvider.cargando ? null : _intentarLogin,
+                      onPressed: authProvider.cargando ? null : _registrar,
                       style: FilledButton.styleFrom(padding: const EdgeInsets.all(16)),
                       child: authProvider.cargando
                           ? const SizedBox(
@@ -137,16 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Ingresar'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: authProvider.cargando
-                          ? null
-                          : () => Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const RegistroScreen()),
-                              ),
-                      child: const Text('¿No tienes cuenta? Crear cuenta'),
+                          : const Text('Crear cuenta'),
                     ),
                   ],
                 ),

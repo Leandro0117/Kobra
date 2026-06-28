@@ -20,4 +20,18 @@ class AuthService {
       usuario: Usuario.fromJson(data['usuario'] as Map<String, dynamic>),
     );
   }
+
+  // El backend no devuelve token al registrar, solo el usuario creado: hay
+  // que loguear aparte con las mismas credenciales para obtener la sesión.
+  Future<void> registrar({
+    required String nombre,
+    required String email,
+    required String password,
+    required Rol rol,
+  }) async {
+    await ApiClient.post<Map<String, dynamic>>(
+      '/auth/register',
+      data: {'nombre': nombre, 'email': email, 'password': password, 'rol': rol.name},
+    );
+  }
 }

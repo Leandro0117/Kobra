@@ -6,6 +6,7 @@ import '../widgets/menu_opciones.dart';
 import 'ventas_menu_screen.dart';
 import 'gastos_menu_screen.dart';
 import 'finanzas_screen.dart';
+import 'registro_negocio_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -40,6 +41,15 @@ class HomeScreen extends StatelessWidget {
               icono: Icons.account_balance_outlined,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const FinanzasScreen()),
+              ),
+            ),
+            OpcionMenu(
+              titulo: 'Negocio',
+              icono: Icons.storefront_outlined,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const RegistroNegocioScreen(esEdicion: true),
+                ),
               ),
             ),
           ]

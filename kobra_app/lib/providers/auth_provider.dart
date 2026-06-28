@@ -67,6 +67,29 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> registrar({
+    required String nombre,
+    required String email,
+    required String password,
+    required Rol rol,
+  }) async {
+    _cargando = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _authService.registrar(nombre: nombre, email: email, password: password, rol: rol);
+      // El registro no devuelve sesión: se loguea aparte con las mismas
+      // credenciales para dejar al usuario adentro.
+      return await login(email, password);
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      _cargando = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> cerrarSesion() async {
     await TokenStorage.limpiarSesion();
     _usuario = null;

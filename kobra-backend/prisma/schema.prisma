@@ -8,6 +8,17 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// Información del negocio/emprendimiento. Es un registro único (singleton,
+// id fijo = 1): se completa una vez tras crear el usuario admin y se puede
+// editar después desde la app.
+model Negocio {
+  id        Int     @id @default(1)
+  nombre    String
+  direccion String?
+  telefono  String?
+  moneda    String
+}
+
 model Usuario {
   id       Int      @id @default(autoincrement())
   nombre   String

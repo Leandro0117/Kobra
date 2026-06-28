@@ -12,6 +12,7 @@ import { ProveedoresModule } from './proveedores/proveedores.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { GastosModule } from './gastos/gastos.module';
 import { FinanzasModule } from './finanzas/finanzas.module';
+import { NegocioModule } from './negocio/negocio.module';
 import { HealthModule } from './health/health.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
@@ -29,6 +30,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     InsumosModule,
     GastosModule,
     FinanzasModule,
+    NegocioModule,
     HealthModule,
   ],
   providers: [
