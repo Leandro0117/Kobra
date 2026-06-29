@@ -37,6 +37,11 @@ export class ClientesController {
     return this.clientesService.findOne(id);
   }
 
+  @Get(':id/detalle')
+  obtenerDetalle(@Param('id', ParseIntPipe) id: number) {
+    return this.clientesService.obtenerDetalle(id);
+  }
+
   // Solo ADMIN puede editar o eliminar clientes existentes
   @Patch(':id')
   @Roles(Rol.ADMIN)

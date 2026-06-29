@@ -29,6 +29,42 @@ export class ClientesService {
     return this.prisma.cliente.update({ where: { id }, data: dto });
   }
 
+  async obtenerDetalle(id: number) {
+    const cliente = await this.findOne(id);
+
+    // Las ventas CANCELADO no representan una compra real.
+    const ventas = await this.prisma.venta.findMany({
+      where: { clienteId: id, estado: { not: 'CANCELADO' } },
+      include: { detalles: { include: { variante: { include: { producto: true } } } } },
+    });
+
+    const totalComprado = ventas.reduce((suma, v) => suma + v.total, 0);
+
+    const porProducto = new Map<number, { nombre: string; cantidad: number }>();
+    for (const venta of ventas) {
+      for (const detalle of venta.detalles) {
+        const productoId = detalle.variante.productoId;
+        const producto = porProducto.get(productoId) ?? {
+          nombre: detalle.variante.producto.nombre,
+          cantidad: 0,
+        };
+        producto.cantidad += detalle.cantidad;
+        porProducto.set(productoId, producto);
+      }
+    }
+
+    const productoMasComprado = [...porProducto.values()].sort(
+      (a, b) => b.cantidad - a.cantidad,
+    )[0];
+
+    return {
+      cliente,
+      cantidadVentas: ventas.length,
+      totalComprado,
+      productoMasComprado: productoMasComprado ?? null,
+    };
+  }
+
   async remove(id: number) {
     await this.findOne(id);
     try {

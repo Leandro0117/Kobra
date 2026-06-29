@@ -36,9 +36,11 @@ enum Rol {
 }
 
 model Cliente {
-  id       Int     @id @default(autoincrement())
+  id       Int      @id @default(autoincrement())
   nombre   String
   telefono String?
+  notas    String?
+  creadoEn DateTime @default(now())
   ventas   Venta[]
 }
 

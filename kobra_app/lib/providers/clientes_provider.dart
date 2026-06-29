@@ -45,4 +45,33 @@ class ClientesProvider extends ChangeNotifier with CargaLentaMixin {
       return false;
     }
   }
+
+  Future<bool> actualizar(int id, String nombre, String? telefono) async {
+    _error = null;
+    try {
+      final actualizado = await _service.actualizar(id, nombre: nombre, telefono: telefono);
+      _clientes = _clientes.map((c) => c.id == id ? actualizado : c).toList()
+        ..sort((a, b) => a.nombre.compareTo(b.nombre));
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> eliminar(int id) async {
+    _error = null;
+    try {
+      await _service.eliminar(id);
+      _clientes = _clientes.where((c) => c.id != id).toList();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return false;
+    }
+  }
 }
