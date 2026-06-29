@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/kobra_logo.dart';
 import 'registro_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -70,17 +71,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.point_of_sale,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                    const Center(child: KobraLogo(height: 56)),
                     const SizedBox(height: 12),
-                    Text(
-                      'Kobra',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
                     Text(
                       'Control de ventas',
                       textAlign: TextAlign.center,

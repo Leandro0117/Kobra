@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/usuario.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/kobra_logo.dart';
 import '../widgets/menu_opciones.dart';
 import 'ventas_menu_screen.dart';
 import 'gastos_menu_screen.dart';
@@ -57,7 +58,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kobra'),
+        title: const KobraLogo(height: 28),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
