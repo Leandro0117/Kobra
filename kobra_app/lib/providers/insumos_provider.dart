@@ -3,8 +3,9 @@ import '../models/insumo.dart';
 import '../services/insumos_service.dart';
 import '../services/api_exception.dart';
 import 'carga_lenta_mixin.dart';
+import 'cache_mixin.dart';
 
-class InsumosProvider extends ChangeNotifier with CargaLentaMixin {
+class InsumosProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
   final InsumosService _service = InsumosService();
 
   List<Insumo> _insumos = [];
@@ -15,7 +16,9 @@ class InsumosProvider extends ChangeNotifier with CargaLentaMixin {
   bool get cargando => _cargando;
   String? get error => _error;
 
-  Future<void> cargar() async {
+  Future<void> cargar({bool forzar = false}) async {
+    if (!forzar && cacheVigente(const Duration(minutes: 10)) && _insumos.isNotEmpty) return;
+
     _cargando = true;
     _error = null;
     iniciarAvisoServidorLento(notifyListeners);
@@ -23,6 +26,7 @@ class InsumosProvider extends ChangeNotifier with CargaLentaMixin {
 
     try {
       _insumos = await _service.listar();
+      marcarCargado();
     } on ApiException catch (e) {
       _error = e.mensaje;
     } finally {

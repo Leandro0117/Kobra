@@ -9,34 +9,43 @@ import '../services/ventas_service.dart';
 import '../widgets/estado_carga.dart';
 import 'detalle_venta_screen.dart';
 
-/// Pantalla de listado de ventas, reutilizada tanto para "en curso" como
-/// para "historial" — [estadosPermitidos] define qué subconjunto de
-/// estados se muestra (el filtro se aplica en el cliente, no en el backend).
 class VentasScreen extends StatefulWidget {
-  final String titulo;
-  final List<EstadoVenta> estadosPermitidos;
-
-  const VentasScreen({super.key, required this.titulo, required this.estadosPermitidos});
+  const VentasScreen({super.key});
 
   @override
   State<VentasScreen> createState() => _VentasScreenState();
 }
 
-class _VentasScreenState extends State<VentasScreen> {
+class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   EstadoVenta? _filtroEstado;
   int? _filtroClienteId;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) setState(() => _filtroEstado = null);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<VentasProvider>().cargar();
       context.read<ClientesProvider>().cargar();
     });
   }
 
-  void _aplicarFiltroCliente() {
-    context.read<VentasProvider>().cargar(filtro: FiltroVentas(clienteId: _filtroClienteId));
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  List<EstadoVenta> get _estadosActuales =>
+      _tabController.index == 0 ? estadosEnCurso : estadosHistorial;
+
+  void _aplicarFiltroCliente(int? clienteId) {
+    setState(() => _filtroClienteId = clienteId);
+    context.read<VentasProvider>().cargar(filtro: FiltroVentas(clienteId: clienteId));
   }
 
   Future<void> _confirmarEliminar(Venta venta) async {
@@ -73,19 +82,87 @@ class _VentasScreenState extends State<VentasScreen> {
     }
   }
 
+  Widget _buildLista(
+    BuildContext context,
+    VentasProvider ventasProvider,
+    ClientesProvider clientesProvider,
+    bool esAdmin,
+    List<EstadoVenta> estados,
+  ) {
+    if (ventasProvider.cargando) {
+      return EstadoCargando(avisoServidorLento: ventasProvider.avisoServidorLento);
+    }
+    if (ventasProvider.error != null) {
+      return EstadoError(
+        mensaje: ventasProvider.error!,
+        onReintentar: () => ventasProvider.cargar(),
+      );
+    }
+
+    final ventas = ventasProvider.ventas
+        .where((v) => estados.contains(v.estado))
+        .where((v) => _filtroEstado == null || v.estado == _filtroEstado)
+        .toList();
+
+    if (ventas.isEmpty) {
+      return const Center(child: Text('No hay ventas para mostrar aquí.'));
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => ventasProvider.cargar(forzar: true),
+      child: ListView.separated(
+        itemCount: ventas.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final venta = ventas[index];
+          return ListTile(
+            title: Text(venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}'),
+            subtitle: Text(
+              esAdmin
+                  ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
+                  : estadoLabel(venta.estado),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '\$${venta.total.toStringAsFixed(2)}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Eliminar venta',
+                  onPressed: () => _confirmarEliminar(venta),
+                ),
+              ],
+            ),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => DetalleVentaScreen(ventaId: venta.id)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ventasProvider = context.watch<VentasProvider>();
     final clientesProvider = context.watch<ClientesProvider>();
     final esAdmin = context.watch<AuthProvider>().usuario?.rol == Rol.ADMIN;
-
-    final ventasDelGrupo = ventasProvider.ventas
-        .where((v) => widget.estadosPermitidos.contains(v.estado))
-        .where((v) => _filtroEstado == null || v.estado == _filtroEstado)
-        .toList();
+    final titulo = esAdmin ? 'Ventas' : 'Mis ventas';
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.titulo)),
+      appBar: AppBar(
+        title: Text(titulo),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'En curso'),
+            Tab(text: 'Historial'),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           if (esAdmin)
@@ -95,7 +172,7 @@ class _VentasScreenState extends State<VentasScreen> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<EstadoVenta?>(
-                      initialValue: _filtroEstado,
+                      value: _filtroEstado,
                       decoration: const InputDecoration(
                         labelText: 'Estado',
                         isDense: true,
@@ -103,7 +180,7 @@ class _VentasScreenState extends State<VentasScreen> {
                       ),
                       items: [
                         const DropdownMenuItem(value: null, child: Text('Todos')),
-                        ...widget.estadosPermitidos.map(
+                        ..._estadosActuales.map(
                           (e) => DropdownMenuItem(value: e, child: Text(estadoLabel(e))),
                         ),
                       ],
@@ -113,7 +190,7 @@ class _VentasScreenState extends State<VentasScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<int?>(
-                      initialValue: _filtroClienteId,
+                      value: _filtroClienteId,
                       decoration: const InputDecoration(
                         labelText: 'Cliente',
                         isDense: true,
@@ -125,68 +202,19 @@ class _VentasScreenState extends State<VentasScreen> {
                           (c) => DropdownMenuItem(value: c.id, child: Text(c.nombre)),
                         ),
                       ],
-                      onChanged: (id) {
-                        setState(() => _filtroClienteId = id);
-                        _aplicarFiltroCliente();
-                      },
+                      onChanged: (id) => _aplicarFiltroCliente(id),
                     ),
                   ),
                 ],
               ),
             ),
           Expanded(
-            child: Builder(
-              builder: (context) {
-                if (ventasProvider.cargando) {
-                  return EstadoCargando(avisoServidorLento: ventasProvider.avisoServidorLento);
-                }
-                if (ventasProvider.error != null) {
-                  return EstadoError(
-                    mensaje: ventasProvider.error!,
-                    onReintentar: () => ventasProvider.cargar(),
-                  );
-                }
-                if (ventasDelGrupo.isEmpty) {
-                  return const Center(child: Text('No hay ventas para mostrar aquí.'));
-                }
-                return RefreshIndicator(
-                  onRefresh: () => ventasProvider.cargar(),
-                  child: ListView.separated(
-                    itemCount: ventasDelGrupo.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final venta = ventasDelGrupo[index];
-                      return ListTile(
-                        title: Text(venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}'),
-                        subtitle: Text(
-                          esAdmin
-                              ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
-                              : estadoLabel(venta.estado),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '\$${venta.total.toStringAsFixed(2)}',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              tooltip: 'Eliminar venta',
-                              onPressed: () => _confirmarEliminar(venta),
-                            ),
-                          ],
-                        ),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => DetalleVentaScreen(ventaId: venta.id),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildLista(context, ventasProvider, clientesProvider, esAdmin, estadosEnCurso),
+                _buildLista(context, ventasProvider, clientesProvider, esAdmin, estadosHistorial),
+              ],
             ),
           ),
         ],

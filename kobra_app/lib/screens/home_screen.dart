@@ -7,6 +7,7 @@ import '../widgets/menu_opciones.dart';
 import 'ventas_menu_screen.dart';
 import 'gastos_menu_screen.dart';
 import 'finanzas_screen.dart';
+import 'estadisticas_screen.dart';
 import 'registro_negocio_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -45,8 +46,15 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             OpcionMenu(
-              titulo: 'Negocio',
-              icono: Icons.storefront_outlined,
+              titulo: 'Estadísticas',
+              icono: Icons.bar_chart_outlined,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const EstadisticasScreen()),
+              ),
+            ),
+            OpcionMenu(
+              titulo: 'Configuración',
+              icono: Icons.settings_outlined,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const RegistroNegocioScreen(esEdicion: true),

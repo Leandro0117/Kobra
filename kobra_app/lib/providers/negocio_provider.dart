@@ -3,8 +3,9 @@ import '../models/negocio.dart';
 import '../services/negocio_service.dart';
 import '../services/api_exception.dart';
 import 'carga_lenta_mixin.dart';
+import 'cache_mixin.dart';
 
-class NegocioProvider extends ChangeNotifier with CargaLentaMixin {
+class NegocioProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
   final NegocioService _service = NegocioService();
 
   Negocio? _negocio;
@@ -18,7 +19,9 @@ class NegocioProvider extends ChangeNotifier with CargaLentaMixin {
   bool get verificado => _verificado;
   String? get error => _error;
 
-  Future<void> cargar() async {
+  Future<void> cargar({bool forzar = false}) async {
+    if (!forzar && cacheVigente(const Duration(minutes: 10)) && _negocio != null) return;
+
     _cargando = true;
     _error = null;
     iniciarAvisoServidorLento(notifyListeners);
@@ -27,6 +30,7 @@ class NegocioProvider extends ChangeNotifier with CargaLentaMixin {
     try {
       _negocio = await _service.obtener();
       _verificado = true;
+      marcarCargado();
     } on ApiException catch (e) {
       _error = e.mensaje;
     } finally {

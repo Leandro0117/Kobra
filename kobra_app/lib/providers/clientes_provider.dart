@@ -3,8 +3,9 @@ import '../models/cliente.dart';
 import '../services/clientes_service.dart';
 import '../services/api_exception.dart';
 import 'carga_lenta_mixin.dart';
+import 'cache_mixin.dart';
 
-class ClientesProvider extends ChangeNotifier with CargaLentaMixin {
+class ClientesProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
   final ClientesService _service = ClientesService();
 
   List<Cliente> _clientes = [];
@@ -15,7 +16,9 @@ class ClientesProvider extends ChangeNotifier with CargaLentaMixin {
   bool get cargando => _cargando;
   String? get error => _error;
 
-  Future<void> cargar() async {
+  Future<void> cargar({bool forzar = false}) async {
+    if (!forzar && cacheVigente(const Duration(minutes: 5)) && _clientes.isNotEmpty) return;
+
     _cargando = true;
     _error = null;
     iniciarAvisoServidorLento(notifyListeners);
@@ -23,6 +26,7 @@ class ClientesProvider extends ChangeNotifier with CargaLentaMixin {
 
     try {
       _clientes = await _service.listar();
+      marcarCargado();
     } on ApiException catch (e) {
       _error = e.mensaje;
     } finally {

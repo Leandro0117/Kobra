@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/venta.dart';
 import '../widgets/menu_opciones.dart';
 import 'clientes_screen.dart';
 import 'productos_screen.dart';
 import 'nueva_venta_screen.dart';
 import 'ventas_screen.dart';
-import 'estadisticas_screen.dart';
 
 /// Opciones del apartado de Ventas. Se usa tanto desde el submenú de Ventas
 /// (ADMIN) como directo en el Home (VENDEDOR, que solo tiene este apartado).
@@ -19,27 +17,10 @@ List<OpcionMenu> opcionesVentas(BuildContext context, bool esAdmin) {
       ),
     ),
     OpcionMenu(
-      titulo: esAdmin ? 'Ventas en curso' : 'Mis ventas en curso',
-      icono: Icons.pending_actions_outlined,
+      titulo: esAdmin ? 'Ventas' : 'Mis ventas',
+      icono: Icons.receipt_long_outlined,
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => VentasScreen(
-            titulo: esAdmin ? 'Ventas en curso' : 'Mis ventas en curso',
-            estadosPermitidos: estadosEnCurso,
-          ),
-        ),
-      ),
-    ),
-    OpcionMenu(
-      titulo: esAdmin ? 'Historial de ventas' : 'Mi historial',
-      icono: Icons.history,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => VentasScreen(
-            titulo: esAdmin ? 'Historial de ventas' : 'Mi historial',
-            estadosPermitidos: estadosHistorial,
-          ),
-        ),
+        MaterialPageRoute(builder: (_) => const VentasScreen()),
       ),
     ),
     OpcionMenu(
@@ -56,14 +37,6 @@ List<OpcionMenu> opcionesVentas(BuildContext context, bool esAdmin) {
         MaterialPageRoute(builder: (_) => const ProductosScreen()),
       ),
     ),
-    if (esAdmin)
-      OpcionMenu(
-        titulo: 'Estadísticas',
-        icono: Icons.bar_chart_outlined,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const EstadisticasScreen()),
-        ),
-      ),
   ];
 }
 
