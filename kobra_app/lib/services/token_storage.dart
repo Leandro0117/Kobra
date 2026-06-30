@@ -4,7 +4,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// básicos del usuario logueado (sin base de datos local: solo credenciales
 /// de sesión, todo lo demás siempre se consulta al backend).
 class TokenStorage {
-  static const _storage = FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      resetOnError: true,
+    ),
+  );
   static const _keyToken = 'kobra_access_token';
   static const _keyUsuarioJson = 'kobra_usuario';
 

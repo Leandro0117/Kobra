@@ -11,6 +11,7 @@ List<OpcionMenu> opcionesVentas(BuildContext context, bool esAdmin) {
   return [
     OpcionMenu(
       titulo: 'Nueva venta',
+      subtitulo: 'Registrar pedido',
       icono: Icons.add_shopping_cart,
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const NuevaVentaScreen()),
@@ -45,11 +46,18 @@ class VentasMenuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final opciones = opcionesVentas(context, true);
     return Scaffold(
       appBar: AppBar(title: const Text('Ventas')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: MenuOpcionesGrid(opciones: opcionesVentas(context, true)),
+        child: Column(
+          children: [
+            HeroOpcionMenu(opcion: opciones.first),
+            const SizedBox(height: 16),
+            Expanded(child: MenuOpcionesGrid(opciones: opciones.skip(1).toList())),
+          ],
+        ),
       ),
     );
   }

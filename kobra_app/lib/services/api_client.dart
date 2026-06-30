@@ -23,14 +23,13 @@ class ApiClient {
 
   static Future<void> _agregarToken(RequestOptions options) async {
     try {
-      final token = await TokenStorage.leerToken();
+      final token = await TokenStorage.leerToken().timeout(const Duration(seconds: 5));
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }
     } catch (_) {
-      // Si no se puede leer el almacenamiento seguro, la petición sigue sin
-      // token: el backend la rechazará con 401 si la ruta lo requiere, en
-      // vez de dejarla colgada indefinidamente.
+      // Storage inaccesible o timeout: la petición continúa sin token y el
+      // backend responderá 401 si la ruta lo requiere.
     }
   }
 

@@ -15,6 +15,7 @@ class GastosMenuScreen extends StatelessWidget {
     final opciones = <OpcionMenu>[
       OpcionMenu(
         titulo: 'Nuevo gasto',
+        subtitulo: 'Registrar egreso',
         icono: Icons.add_card_outlined,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const NuevoGastoScreen()),
@@ -47,7 +48,13 @@ class GastosMenuScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Gastos')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: MenuOpcionesGrid(opciones: opciones),
+        child: Column(
+          children: [
+            HeroOpcionMenu(opcion: opciones.first),
+            const SizedBox(height: 16),
+            Expanded(child: MenuOpcionesGrid(opciones: opciones.skip(1).toList())),
+          ],
+        ),
       ),
     );
   }

@@ -62,7 +62,9 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ]
-        : opcionesVentas(context, false);
+        : null;
+
+    final opcionesVendedor = esAdmin ? null : opcionesVentas(context, false);
 
     return Scaffold(
       appBar: AppBar(
@@ -89,7 +91,12 @@ class HomeScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
-            Expanded(child: MenuOpcionesGrid(opciones: opciones)),
+            if (!esAdmin) ...[
+              HeroOpcionMenu(opcion: opcionesVendedor!.first),
+              const SizedBox(height: 16),
+              Expanded(child: MenuOpcionesGrid(opciones: opcionesVendedor.skip(1).toList())),
+            ] else
+              Expanded(child: MenuOpcionesGrid(opciones: opciones!)),
           ],
         ),
       ),
