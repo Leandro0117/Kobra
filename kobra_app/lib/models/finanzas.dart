@@ -15,13 +15,15 @@ class ResumenCategoriaGasto {
 }
 
 class ResumenFinanzas {
-  final double totalIngresos;
+  final double totalCobrado;
+  final double porCobrar;
   final double totalEgresos;
   final double balance;
   final List<ResumenCategoriaGasto> egresosPorCategoria;
 
   ResumenFinanzas({
-    required this.totalIngresos,
+    required this.totalCobrado,
+    required this.porCobrar,
     required this.totalEgresos,
     required this.balance,
     required this.egresosPorCategoria,
@@ -29,7 +31,8 @@ class ResumenFinanzas {
 
   factory ResumenFinanzas.fromJson(Map<String, dynamic> json) {
     return ResumenFinanzas(
-      totalIngresos: (json['totalIngresos'] as num).toDouble(),
+      totalCobrado: (json['totalCobrado'] as num).toDouble(),
+      porCobrar: (json['porCobrar'] as num).toDouble(),
       totalEgresos: (json['totalEgresos'] as num).toDouble(),
       balance: (json['balance'] as num).toDouble(),
       egresosPorCategoria: (json['egresosPorCategoria'] as List)

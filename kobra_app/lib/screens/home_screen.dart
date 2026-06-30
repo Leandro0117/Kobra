@@ -7,7 +7,6 @@ import '../widgets/menu_opciones.dart';
 import 'ventas_menu_screen.dart';
 import 'gastos_menu_screen.dart';
 import 'finanzas_screen.dart';
-import 'estadisticas_screen.dart';
 import 'registro_negocio_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -39,17 +38,10 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             OpcionMenu(
-              titulo: 'Finanzas',
-              icono: Icons.account_balance_outlined,
+              titulo: 'Resumen',
+              icono: Icons.dashboard_outlined,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const FinanzasScreen()),
-              ),
-            ),
-            OpcionMenu(
-              titulo: 'Estadísticas',
-              icono: Icons.bar_chart_outlined,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const EstadisticasScreen()),
               ),
             ),
             OpcionMenu(
@@ -73,7 +65,26 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar sesión',
-            onPressed: () => authProvider.cerrarSesion(),
+            onPressed: () async {
+              final confirmar = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Cerrar sesión'),
+                  content: const Text('¿Seguro que querés cerrar sesión?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Cancelar'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('Cerrar sesión'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmar == true) authProvider.cerrarSesion();
+            },
           ),
         ],
       ),

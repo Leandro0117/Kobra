@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/usuario.dart';
 import '../models/venta.dart';
@@ -9,6 +10,16 @@ import '../services/ventas_service.dart';
 import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 import 'detalle_venta_screen.dart';
+
+String _etiquetaFecha(DateTime fecha) {
+  final hoy = DateTime.now();
+  final soloHoy = DateTime(hoy.year, hoy.month, hoy.day);
+  final soloFecha = DateTime(fecha.year, fecha.month, fecha.day);
+  final diff = soloHoy.difference(soloFecha).inDays;
+  if (diff == 0) return 'Hoy';
+  if (diff == 1) return 'Ayer';
+  return DateFormat('d MMMM', 'es').format(fecha);
+}
 
 class VentasScreen extends StatefulWidget {
   const VentasScreen({super.key});
@@ -109,44 +120,73 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
       return const Center(child: Text('No hay ventas para mostrar aquí.'));
     }
 
+    // Construir lista plana: DateTime (cabecera) o Venta
+    final items = <Object>[];
+    DateTime? diaActual;
+    for (final venta in ventas) {
+      final dia = DateTime(venta.fecha.year, venta.fecha.month, venta.fecha.day);
+      if (diaActual == null || dia != diaActual) {
+        items.add(dia);
+        diaActual = dia;
+      }
+      items.add(venta);
+    }
+
     return RefreshIndicator(
       onRefresh: () => ventasProvider.cargar(forzar: true),
-      child: ListView.separated(
-        itemCount: ventas.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
+      child: ListView.builder(
+        itemCount: items.length,
         itemBuilder: (context, index) {
-          final venta = ventas[index];
-          return ListTile(
-            title: Text(venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}'),
-            subtitle: Text(
-              esAdmin
-                  ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
-                  : estadoLabel(venta.estado),
-            ),
-            trailing: SizedBox(
-              width: 110,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: Text(
-                      formatPrecio(venta.total),
-                      style: Theme.of(context).textTheme.titleMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => _confirmarEliminar(venta),
-                    child: const Icon(Icons.delete_outline, size: 18),
-                  ),
-                ],
+          final item = items[index];
+          if (item is DateTime) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                _etiquetaFecha(item),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: Theme.of(context).colorScheme.primary),
               ),
-            ),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => DetalleVentaScreen(ventaId: venta.id)),
-            ),
+            );
+          }
+          final venta = item as Venta;
+          return Column(
+            children: [
+              ListTile(
+                title: Text(venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}'),
+                subtitle: Text(
+                  esAdmin
+                      ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
+                      : estadoLabel(venta.estado),
+                ),
+                trailing: SizedBox(
+                  width: 110,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          formatPrecio(venta.total),
+                          style: Theme.of(context).textTheme.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () => _confirmarEliminar(venta),
+                        child: const Icon(Icons.delete_outline, size: 18),
+                      ),
+                    ],
+                  ),
+                ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => DetalleVentaScreen(ventaId: venta.id)),
+                ),
+              ),
+              const Divider(height: 1),
+            ],
           );
         },
       ),
