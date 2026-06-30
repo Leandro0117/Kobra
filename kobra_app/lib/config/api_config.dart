@@ -1,8 +1,8 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ApiConfig {
-  // static const String baseUrl = 'http://localhost:3000'; // Local
-  // static const String baseUrl = 'http://192.168.128.8:3000'; // Local
-  static const String baseUrl = 'http://192.168.1.122:3000'; // Local
-  // static const String baseUrl = 'https://kobra-6y6c.onrender.com'; // Render
+  static String get baseUrl =>
+      dotenv.get('API_BASE_URL', fallback: 'https://kobra-6y6c.onrender.com');
 
   /// Render free tier "duerme" el servicio tras inactividad. La primera
   /// petición tras el sueño puede tardar bastante en responder.

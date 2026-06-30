@@ -38,6 +38,7 @@ dependencies:
   provider: ^6.1.5+1
   flutter_secure_storage: ^10.3.1
   intl: ^0.20.3
+  flutter_dotenv: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +70,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/Logo Kobra.png
     - assets/Logo_Kobra_Negative.png
     - assets/Icon Kobra.png
