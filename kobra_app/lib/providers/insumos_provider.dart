@@ -36,10 +36,10 @@ class InsumosProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
     }
   }
 
-  Future<bool> crear(String nombre, String? unidad) async {
+  Future<bool> crear(String nombre, UnidadInsumo? unidad, double? precio) async {
     _error = null;
     try {
-      final nuevo = await _service.crear(nombre: nombre, unidad: unidad);
+      final nuevo = await _service.crear(nombre: nombre, unidad: unidad, precio: precio);
       _insumos = [..._insumos, nuevo]..sort((a, b) => a.nombre.compareTo(b.nombre));
       notifyListeners();
       return true;

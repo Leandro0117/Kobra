@@ -1,12 +1,13 @@
-import { IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { UnidadInsumo } from '@prisma/client';
 
 export class CreateInsumoDto {
   @IsString()
   nombre: string;
 
   @IsOptional()
-  @IsString()
-  unidad?: string;
+  @IsEnum(UnidadInsumo)
+  unidad?: UnidadInsumo;
 
   @IsOptional()
   @IsNumber()

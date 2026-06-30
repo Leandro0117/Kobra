@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/insumo.dart';
+import '../utils/formato.dart';
 import '../providers/insumos_provider.dart';
 import '../widgets/estado_carga.dart';
 
@@ -22,51 +23,76 @@ class _InsumosScreenState extends State<InsumosScreen> {
 
   Future<void> _mostrarFormularioNuevoInsumo() async {
     final nombreController = TextEditingController();
-    final unidadController = TextEditingController();
+    final precioController = TextEditingController();
+    UnidadInsumo? unidadSeleccionada;
     final formKey = GlobalKey<FormState>();
 
     final guardar = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nuevo insumo'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nombreController,
-                decoration: const InputDecoration(labelText: 'Nombre (ej. Azúcar)'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
-              ),
-              TextFormField(
-                controller: unidadController,
-                decoration: const InputDecoration(
-                  labelText: 'Unidad (opcional, ej. kg, litro, unidad)',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Nuevo insumo'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nombreController,
+                  decoration: const InputDecoration(labelText: 'Nombre'),
+                  validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                DropdownButtonFormField<UnidadInsumo?>(
+                  initialValue: unidadSeleccionada,
+                  decoration: const InputDecoration(labelText: 'Unidad (opcional)'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Sin unidad')),
+                    ...UnidadInsumo.values.map(
+                      (u) => DropdownMenuItem(value: u, child: Text(unidadInsumoLabel(u))),
+                    ),
+                  ],
+                  onChanged: (u) => setDialogState(() => unidadSeleccionada = u),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: precioController,
+                  decoration: const InputDecoration(labelText: 'Precio de referencia (opcional)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return null;
+                    final p = double.tryParse(v);
+                    if (p == null || p <= 0) return 'Precio inválido';
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) Navigator.of(context).pop(true);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) Navigator.of(context).pop(true);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
       ),
     );
 
     if (guardar == true && mounted) {
+      final precio = precioController.text.trim().isEmpty
+          ? null
+          : double.tryParse(precioController.text.trim());
       final ok = await context.read<InsumosProvider>().crear(
             nombreController.text.trim(),
-            unidadController.text.trim(),
+            unidadSeleccionada,
+            precio,
           );
       if (!mounted) return;
       if (!ok) {
@@ -142,7 +168,12 @@ class _InsumosScreenState extends State<InsumosScreen> {
                 return ListTile(
                   leading: const Icon(Icons.inventory_outlined),
                   title: Text(insumo.nombre),
-                  subtitle: insumo.unidad != null ? Text(insumo.unidad!) : null,
+                  subtitle: (insumo.unidad != null || insumo.precio != null)
+                      ? Text([
+                          if (insumo.unidad != null) unidadInsumoLabel(insumo.unidad!),
+                          if (insumo.precio != null) formatPrecio(insumo.precio!),
+                        ].join(' · '))
+                      : null,
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () => _confirmarEliminar(insumo),

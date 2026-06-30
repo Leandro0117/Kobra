@@ -24,7 +24,7 @@ class HeroOpcionMenu extends StatelessWidget {
       child: InkWell(
         onTap: opcion.onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
           child: Row(
             children: [
               Icon(opcion.icono, size: 32, color: Colors.white),
@@ -44,12 +44,12 @@ class HeroOpcionMenu extends StatelessWidget {
                   if (opcion.subtitulo != null)
                     Text(
                       opcion.subtitulo!,
-                      style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 13),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 13),
                     ),
                 ],
               ),
               const Spacer(),
-              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white.withOpacity(0.6)),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white.withValues(alpha: 0.6)),
             ],
           ),
         ),

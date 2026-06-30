@@ -206,7 +206,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
 
             // ── Estado inicial ──
             DropdownButtonFormField<EstadoVenta>(
-              value: _estadoSeleccionado,
+              initialValue: _estadoSeleccionado,
               decoration: const InputDecoration(
                 labelText: 'Estado',
                 border: OutlineInputBorder(),
@@ -230,7 +230,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
               const Text('Todavía no hay variantes de producto registradas.')
             else ...[
               DropdownButtonFormField<Producto>(
-                value: _productoSeleccionado,
+                initialValue: _productoSeleccionado,
                 decoration: const InputDecoration(
                   labelText: 'Producto',
                   border: OutlineInputBorder(),

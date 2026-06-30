@@ -71,7 +71,9 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
               TextFormField(
                 controller: cantidadController,
                 decoration: InputDecoration(
-                  labelText: insumo.unidad != null ? 'Cantidad (${insumo.unidad})' : 'Cantidad',
+                  labelText: insumo.unidad != null
+                      ? 'Cantidad (${unidadInsumoLabel(insumo.unidad!)})'
+                      : 'Cantidad',
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 validator: (v) {

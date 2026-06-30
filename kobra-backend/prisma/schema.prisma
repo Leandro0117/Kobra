@@ -105,9 +105,22 @@ model Proveedor {
 model Insumo {
   id       Int            @id @default(autoincrement())
   nombre   String
-  unidad   String?
+  unidad   UnidadInsumo?
   precio   Float?
   detalles DetalleGasto[]
+}
+
+enum UnidadInsumo {
+  UNIDAD
+  KG
+  G
+  L
+  ML
+  M
+  CM
+  PAQ
+  CAJA
+  DOC
 }
 
 enum CategoriaGasto {

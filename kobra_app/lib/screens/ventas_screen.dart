@@ -173,7 +173,8 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<EstadoVenta?>(
-                      value: _filtroEstado,
+                      key: ValueKey(_filtroEstado),
+                      initialValue: _filtroEstado,
                       decoration: const InputDecoration(
                         labelText: 'Estado',
                         isDense: true,
@@ -191,7 +192,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<int?>(
-                      value: _filtroClienteId,
+                      initialValue: _filtroClienteId,
                       decoration: const InputDecoration(
                         labelText: 'Cliente',
                         isDense: true,

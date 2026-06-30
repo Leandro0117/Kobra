@@ -7,12 +7,17 @@ class InsumosService {
     return response.data!.map((e) => Insumo.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<Insumo> crear({required String nombre, String? unidad}) async {
+  Future<Insumo> crear({
+    required String nombre,
+    UnidadInsumo? unidad,
+    double? precio,
+  }) async {
     final response = await ApiClient.post<Map<String, dynamic>>(
       '/insumos',
       data: {
         'nombre': nombre,
-        if (unidad != null && unidad.isNotEmpty) 'unidad': unidad,
+        'unidad': unidad?.name,
+        'precio': precio,
       },
     );
     return Insumo.fromJson(response.data!);
