@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
 
 export class CreateInsumoDto {
   @IsString()
@@ -7,4 +7,9 @@ export class CreateInsumoDto {
   @IsOptional()
   @IsString()
   unidad?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  precio?: number;
 }

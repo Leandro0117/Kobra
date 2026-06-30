@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/estadisticas.dart';
 import '../providers/estadisticas_provider.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 
 class EstadisticasScreen extends StatefulWidget {
@@ -86,7 +87,7 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
               Expanded(
                 child: _TarjetaTotal(
                   titulo: 'Total facturado',
-                  valor: '\$${resumen.totalFacturado.toStringAsFixed(2)}',
+                  valor: formatPrecio(resumen.totalFacturado),
                 ),
               ),
             ],
@@ -147,10 +148,10 @@ class _FilaCliente extends StatelessWidget {
       leading: const Icon(Icons.person_outline),
       title: Text(cliente.nombre),
       subtitle: Text(
-        '${cliente.cantidadVentas} venta(s) · ${cliente.cantidadProductos.toStringAsFixed(0)} producto(s) comprados',
+        '${cliente.cantidadVentas} venta(s) · ${formatMonto(cliente.cantidadProductos)} producto(s) comprados',
       ),
       trailing: Text(
-        '\$${cliente.totalComprado.toStringAsFixed(2)}',
+        formatPrecio(cliente.totalComprado),
         style: Theme.of(context).textTheme.titleSmall,
       ),
     );
@@ -168,9 +169,9 @@ class _FilaProducto extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.inventory_2_outlined),
       title: Text(producto.nombre),
-      subtitle: Text('${producto.cantidadVendida.toStringAsFixed(0)} unidad(es) vendidas'),
+      subtitle: Text('${formatMonto(producto.cantidadVendida)} unidad(es) vendidas'),
       trailing: Text(
-        '\$${producto.totalFacturado.toStringAsFixed(2)}',
+        formatPrecio(producto.totalFacturado),
         style: Theme.of(context).textTheme.titleSmall,
       ),
     );

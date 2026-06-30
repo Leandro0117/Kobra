@@ -5,6 +5,7 @@ import '../models/categoria_gasto.dart';
 import '../providers/proveedores_provider.dart';
 import '../providers/gastos_provider.dart';
 import '../services/gastos_service.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 import 'detalle_gasto_screen.dart';
 
@@ -41,7 +42,7 @@ class _GastosScreenState extends State<GastosScreen> {
         title: const Text('Eliminar gasto'),
         content: Text(
           '¿Eliminar el gasto de "${gasto.proveedor?.nombre ?? 'proveedor #${gasto.proveedorId}'}" '
-          'por \$${gasto.total.toStringAsFixed(2)}? Esta acción no se puede deshacer.',
+          'por ${formatPrecio(gasto.total)}? Esta acción no se puede deshacer.',
         ),
         actions: [
           TextButton(
@@ -154,7 +155,7 @@ class _GastosScreenState extends State<GastosScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              '\$${gasto.total.toStringAsFixed(2)}',
+                              formatPrecio(gasto.total),
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             IconButton(

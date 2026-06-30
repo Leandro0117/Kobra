@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/gasto.dart';
 import '../models/categoria_gasto.dart';
 import '../providers/gastos_provider.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 
 class DetalleGastoScreen extends StatefulWidget {
@@ -48,7 +49,7 @@ class _DetalleGastoScreenState extends State<DetalleGastoScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Eliminar gasto'),
         content: Text(
-          '¿Eliminar este gasto por \$${gasto.total.toStringAsFixed(2)}? '
+          '¿Eliminar este gasto por ${formatPrecio(gasto.total)}? '
           'Esta acción no se puede deshacer.',
         ),
         actions: [
@@ -130,9 +131,9 @@ class _DetalleGastoScreenState extends State<DetalleGastoScreen> {
             contentPadding: EdgeInsets.zero,
             title: Text(d.insumo?.nombre ?? 'Insumo #${d.insumoId}'),
             subtitle: Text(
-              '\$${d.precioUnitario.toStringAsFixed(2)} x ${d.cantidad.toStringAsFixed(0)}',
+              '${formatPrecio(d.precioUnitario)} x ${formatMonto(d.cantidad)}',
             ),
-            trailing: Text('\$${d.subtotal.toStringAsFixed(2)}'),
+            trailing: Text(formatPrecio(d.subtotal)),
           ),
         ),
         const Divider(),
@@ -143,7 +144,7 @@ class _DetalleGastoScreenState extends State<DetalleGastoScreen> {
             children: [
               Text('Total', style: Theme.of(context).textTheme.titleMedium),
               Text(
-                '\$${gasto.total.toStringAsFixed(2)}',
+                formatPrecio(gasto.total),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ],

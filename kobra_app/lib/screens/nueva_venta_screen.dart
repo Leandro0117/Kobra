@@ -8,6 +8,7 @@ import '../models/venta.dart';
 import '../providers/clientes_provider.dart';
 import '../providers/productos_provider.dart';
 import '../providers/ventas_provider.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 
 class _LineaCarrito {
@@ -25,10 +26,6 @@ class _LineaCarrito {
   String get titulo => '$nombreProducto — ${variante.nombre}';
 }
 
-String _formatPrecio(double precio) {
-  if (precio == precio.truncateToDouble()) return '\$${precio.toInt()}';
-  return '\$${precio.toStringAsFixed(2)}';
-}
 
 class NuevaVentaScreen extends StatefulWidget {
   const NuevaVentaScreen({super.key});
@@ -252,7 +249,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                       .map(
                         (v) => ActionChip(
                           avatar: const Icon(Icons.add, size: 18),
-                          label: Text('${v.nombre}  ${_formatPrecio(v.precio)}'),
+                          label: Text('${v.nombre}  ${formatPrecio(v.precio)}'),
                           onPressed: () => _agregarVariante(v),
                         ),
                       )
@@ -276,7 +273,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                           dense: true,
                           title: Text(linea.titulo),
                           subtitle: Text(
-                            '${_formatPrecio(linea.variante.precio)} x ${linea.cantidad} = ${_formatPrecio(linea.subtotal)}',
+                            '${formatPrecio(linea.variante.precio)} x ${linea.cantidad} = ${formatPrecio(linea.subtotal)}',
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -312,7 +309,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                 children: [
                   Text('Total estimado', style: Theme.of(context).textTheme.titleMedium),
                   Text(
-                    _formatPrecio(_total),
+                    formatPrecio(_total),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ],

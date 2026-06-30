@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/cliente.dart';
+import '../utils/formato.dart';
 import '../services/clientes_service.dart';
 import '../widgets/estado_carga.dart';
 
@@ -73,7 +74,7 @@ class _DetalleClienteScreenState extends State<DetalleClienteScreen> {
                       _filaEstadistica(
                         context,
                         'Total comprado',
-                        '\$${detalle.totalComprado.toStringAsFixed(2)}',
+                        formatPrecio(detalle.totalComprado),
                       ),
                       _filaEstadistica(
                         context,
@@ -85,7 +86,7 @@ class _DetalleClienteScreenState extends State<DetalleClienteScreen> {
                         'Producto más comprado',
                         detalle.productoMasComprado != null
                             ? '${detalle.productoMasComprado!.nombre} '
-                                '(${detalle.productoMasComprado!.cantidad.toStringAsFixed(0)})'
+                                '(${formatMonto(detalle.productoMasComprado!.cantidad)})'
                             : 'Sin compras registradas',
                       ),
                     ],

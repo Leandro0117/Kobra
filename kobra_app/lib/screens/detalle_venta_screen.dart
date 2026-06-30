@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/venta.dart';
 import '../providers/ventas_provider.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 
 class DetalleVentaScreen extends StatefulWidget {
@@ -48,7 +49,7 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Eliminar venta'),
         content: Text(
-          '¿Eliminar esta venta por \$${venta.total.toStringAsFixed(2)}? '
+          '¿Eliminar esta venta por ${formatPrecio(venta.total)}? '
           'Esta acción no se puede deshacer.',
         ),
         actions: [
@@ -145,9 +146,9 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
             contentPadding: EdgeInsets.zero,
             title: Text(d.variante?.nombreCompleto() ?? 'Variante #${d.varianteId}'),
             subtitle: Text(
-              '\$${d.precioUnitario.toStringAsFixed(2)} x ${d.cantidad.toStringAsFixed(0)}',
+              '${formatPrecio(d.precioUnitario)} x ${formatMonto(d.cantidad)}',
             ),
-            trailing: Text('\$${d.subtotal.toStringAsFixed(2)}'),
+            trailing: Text(formatPrecio(d.subtotal)),
           ),
         ),
         const Divider(),
@@ -158,7 +159,7 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
             children: [
               Text('Total', style: Theme.of(context).textTheme.titleMedium),
               Text(
-                '\$${venta.total.toStringAsFixed(2)}',
+                formatPrecio(venta.total),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ],

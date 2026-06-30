@@ -7,6 +7,7 @@ import '../models/categoria_gasto.dart';
 import '../providers/proveedores_provider.dart';
 import '../providers/insumos_provider.dart';
 import '../providers/gastos_provider.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 
 class _LineaCarritoGasto {
@@ -52,7 +53,9 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
       text: existente != null ? existente.cantidad.toString() : '1',
     );
     final precioController = TextEditingController(
-      text: existente != null ? existente.precioUnitario.toString() : '',
+      text: existente != null
+          ? existente.precioUnitario.toString()
+          : (insumo.precio != null ? insumo.precio.toString() : ''),
     );
     final formKey = GlobalKey<FormState>();
 
@@ -257,7 +260,7 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
                         return ListTile(
                           title: Text(linea.insumo.nombre),
                           subtitle: Text(
-                            '\$${linea.precioUnitario.toStringAsFixed(2)} x ${linea.cantidad} = \$${linea.subtotal.toStringAsFixed(2)}',
+                            '${formatPrecio(linea.precioUnitario)} x ${formatMonto(linea.cantidad)} = ${formatPrecio(linea.subtotal)}',
                           ),
                           onTap: () => _mostrarDialogoLinea(linea.insumo, existente: linea),
                           trailing: IconButton(
@@ -276,7 +279,7 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
                 children: [
                   Text('Total estimado', style: Theme.of(context).textTheme.titleMedium),
                   Text(
-                    '\$${_total.toStringAsFixed(2)}',
+                    formatPrecio(_total),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ],

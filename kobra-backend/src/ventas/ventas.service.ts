@@ -38,6 +38,7 @@ export class VentasService {
         varianteId: d.varianteId,
         cantidad: d.cantidad,
         precioUnitario: variante.precio,
+        costoUnitario: variante.costo ?? null,
       };
     });
 

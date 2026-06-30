@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/clientes_provider.dart';
 import '../providers/ventas_provider.dart';
 import '../services/ventas_service.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 import 'detalle_venta_screen.dart';
 
@@ -55,7 +56,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
         title: const Text('Eliminar venta'),
         content: Text(
           '¿Eliminar la venta de "${venta.cliente?.nombre ?? 'cliente #${venta.clienteId}'}" '
-          'por \$${venta.total.toStringAsFixed(2)}? Esta acción no se puede deshacer.',
+          'por ${formatPrecio(venta.total)}? Esta acción no se puede deshacer.',
         ),
         actions: [
           TextButton(
@@ -126,7 +127,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '\$${venta.total.toStringAsFixed(2)}',
+                  formatPrecio(venta.total),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 IconButton(

@@ -87,6 +87,7 @@ model DetalleVenta {
   varianteId     Int
   cantidad       Float
   precioUnitario Float
+  costoUnitario  Float?
 }
 
 // ===== Gastos (compra de insumos, proveedores, egresos en general) =====
@@ -105,6 +106,7 @@ model Insumo {
   id       Int            @id @default(autoincrement())
   nombre   String
   unidad   String?
+  precio   Float?
   detalles DetalleGasto[]
 }
 

@@ -4,6 +4,7 @@ import '../models/estadisticas.dart';
 import '../models/finanzas.dart';
 import '../models/categoria_gasto.dart';
 import '../providers/finanzas_provider.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 
 class FinanzasScreen extends StatefulWidget {
@@ -78,7 +79,7 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
               Expanded(
                 child: _TarjetaTotal(
                   titulo: 'Ingresos (ventas)',
-                  valor: '\$${resumen.totalIngresos.toStringAsFixed(2)}',
+                  valor: formatPrecio(resumen.totalIngresos),
                   color: Colors.green,
                 ),
               ),
@@ -86,7 +87,7 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
               Expanded(
                 child: _TarjetaTotal(
                   titulo: 'Egresos (gastos)',
-                  valor: '\$${resumen.totalEgresos.toStringAsFixed(2)}',
+                  valor: formatPrecio(resumen.totalEgresos),
                   color: Colors.red,
                 ),
               ),
@@ -95,7 +96,7 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
           const SizedBox(height: 12),
           _TarjetaTotal(
             titulo: esGanancia ? 'Balance (ganancia)' : 'Balance (pérdida)',
-            valor: '\$${resumen.balance.toStringAsFixed(2)}',
+            valor: formatPrecio(resumen.balance),
             color: esGanancia ? Colors.green : Colors.red,
           ),
           const SizedBox(height: 24),
@@ -151,7 +152,7 @@ class _FilaCategoria extends StatelessWidget {
       leading: const Icon(Icons.label_outline),
       title: Text(categoriaGastoLabel(categoria.categoria)),
       trailing: Text(
-        '\$${categoria.total.toStringAsFixed(2)}',
+        formatPrecio(categoria.total),
         style: Theme.of(context).textTheme.titleSmall,
       ),
     );

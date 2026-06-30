@@ -5,6 +5,7 @@ import '../models/usuario.dart';
 import '../models/variante.dart';
 import '../providers/auth_provider.dart';
 import '../providers/productos_provider.dart';
+import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -405,9 +406,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         title: Text(v.nombre),
                         subtitle: Text(
                           v.costo != null
-                              ? '\$${v.precio.toStringAsFixed(2)} · costo \$${v.costo!.toStringAsFixed(2)} '
-                                  '· ganancia \$${v.ganancia!.toStringAsFixed(2)} (${v.margenPorcentaje!.toStringAsFixed(0)}%)'
-                              : '\$${v.precio.toStringAsFixed(2)}',
+                              ? '${formatPrecio(v.precio)} · costo ${formatPrecio(v.costo!)} '
+                                  '· ganancia ${formatPrecio(v.ganancia!)} (${v.margenPorcentaje!.toStringAsFixed(0)}%)'
+                              : formatPrecio(v.precio),
                         ),
                         trailing: esAdmin
                             ? Row(
