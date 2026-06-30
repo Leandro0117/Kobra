@@ -47,7 +47,7 @@ class Gasto {
       usuarioId: json['usuarioId'] as int,
       proveedorId: json['proveedorId'] as int,
       categoria: categoriaGastoFromString(json['categoria'] as String),
-      fecha: DateTime.parse(json['fecha'] as String),
+      fecha: DateTime.parse(json['fecha'] as String).toLocal(),
       total: (json['total'] as num).toDouble(),
       proveedor: json['proveedor'] != null
           ? Proveedor.fromJson(json['proveedor'] as Map<String, dynamic>)

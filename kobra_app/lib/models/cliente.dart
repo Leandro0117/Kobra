@@ -19,7 +19,7 @@ class Cliente {
       nombre: json['nombre'] as String,
       telefono: json['telefono'] as String?,
       notas: json['notas'] as String?,
-      creadoEn: json['creadoEn'] != null ? DateTime.parse(json['creadoEn'] as String) : null,
+      creadoEn: json['creadoEn'] != null ? DateTime.parse(json['creadoEn'] as String).toLocal() : null,
     );
   }
 }

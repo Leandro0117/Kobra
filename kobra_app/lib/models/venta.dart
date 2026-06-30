@@ -73,7 +73,7 @@ class Venta {
       id: json['id'] as int,
       vendedorId: json['vendedorId'] as int,
       clienteId: json['clienteId'] as int,
-      fecha: DateTime.parse(json['fecha'] as String),
+      fecha: DateTime.parse(json['fecha'] as String).toLocal(),
       estado: estadoFromString(json['estado'] as String),
       total: (json['total'] as num).toDouble(),
       cliente: json['cliente'] != null

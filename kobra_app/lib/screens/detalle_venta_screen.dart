@@ -134,7 +134,7 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
         const SizedBox(height: 12),
         Text('Fecha', style: Theme.of(context).textTheme.labelMedium),
         Text(
-          '${venta.fecha.day}/${venta.fecha.month}/${venta.fecha.year} ${venta.fecha.hour.toString().padLeft(2, '0')}:${venta.fecha.minute.toString().padLeft(2, '0')}',
+          formatFechaHora(venta.fecha),
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 16),

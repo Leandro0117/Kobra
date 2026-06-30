@@ -123,19 +123,26 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
                   ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
                   : estadoLabel(venta.estado),
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  formatPrecio(venta.total),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  tooltip: 'Eliminar venta',
-                  onPressed: () => _confirmarEliminar(venta),
-                ),
-              ],
+            trailing: SizedBox(
+              width: 110,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: Text(
+                      formatPrecio(venta.total),
+                      style: Theme.of(context).textTheme.titleMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => _confirmarEliminar(venta),
+                    child: const Icon(Icons.delete_outline, size: 18),
+                  ),
+                ],
+              ),
             ),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => DetalleVentaScreen(ventaId: venta.id)),
@@ -175,6 +182,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
                     child: DropdownButtonFormField<EstadoVenta?>(
                       key: ValueKey(_filtroEstado),
                       initialValue: _filtroEstado,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Estado',
                         isDense: true,
@@ -193,6 +201,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
                   Expanded(
                     child: DropdownButtonFormField<int?>(
                       initialValue: _filtroClienteId,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Cliente',
                         isDense: true,
@@ -201,7 +210,10 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
                       items: [
                         const DropdownMenuItem(value: null, child: Text('Todos')),
                         ...clientesProvider.clientes.map(
-                          (c) => DropdownMenuItem(value: c.id, child: Text(c.nombre)),
+                          (c) => DropdownMenuItem(
+                            value: c.id,
+                            child: Text(c.nombre, overflow: TextOverflow.ellipsis),
+                          ),
                         ),
                       ],
                       onChanged: (id) => _aplicarFiltroCliente(id),

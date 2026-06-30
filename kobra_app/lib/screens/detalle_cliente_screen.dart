@@ -58,7 +58,7 @@ class _DetalleClienteScreenState extends State<DetalleClienteScreen> {
               if (cliente.creadoEn != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'Cliente desde ${_formatearFecha(cliente.creadoEn!)}',
+                  'Cliente desde ${formatFecha(cliente.creadoEn!)}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -131,9 +131,4 @@ class _DetalleClienteScreenState extends State<DetalleClienteScreen> {
     );
   }
 
-  String _formatearFecha(DateTime fecha) {
-    return '${fecha.day.toString().padLeft(2, '0')}/'
-        '${fecha.month.toString().padLeft(2, '0')}/'
-        '${fecha.year}';
-  }
 }

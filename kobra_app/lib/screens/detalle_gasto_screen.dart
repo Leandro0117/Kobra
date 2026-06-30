@@ -119,7 +119,7 @@ class _DetalleGastoScreenState extends State<DetalleGastoScreen> {
         const SizedBox(height: 12),
         Text('Fecha', style: Theme.of(context).textTheme.labelMedium),
         Text(
-          '${gasto.fecha.day}/${gasto.fecha.month}/${gasto.fecha.year} ${gasto.fecha.hour.toString().padLeft(2, '0')}:${gasto.fecha.minute.toString().padLeft(2, '0')}',
+          formatFechaHora(gasto.fecha),
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 16),
