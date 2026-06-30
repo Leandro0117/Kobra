@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/cliente.dart';
+import '../models/producto.dart';
 import '../models/variante.dart';
 import '../models/detalle_venta.dart';
 import '../models/venta.dart';
@@ -11,11 +12,22 @@ import '../widgets/estado_carga.dart';
 
 class _LineaCarrito {
   final Variante variante;
-  double cantidad;
+  final String nombreProducto;
+  int cantidad;
 
-  _LineaCarrito({required this.variante, required this.cantidad});
+  _LineaCarrito({
+    required this.variante,
+    required this.nombreProducto,
+    required this.cantidad,
+  });
 
   double get subtotal => variante.precio * cantidad;
+  String get titulo => '$nombreProducto — ${variante.nombre}';
+}
+
+String _formatPrecio(double precio) {
+  if (precio == precio.truncateToDouble()) return '\$${precio.toInt()}';
+  return '\$${precio.toStringAsFixed(2)}';
 }
 
 class NuevaVentaScreen extends StatefulWidget {
@@ -27,6 +39,7 @@ class NuevaVentaScreen extends StatefulWidget {
 
 class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
   Cliente? _clienteSeleccionado;
+  Producto? _productoSeleccionado;
   EstadoVenta _estadoSeleccionado = EstadoVenta.PENDIENTE;
   final List<_LineaCarrito> _carrito = [];
   bool _guardando = false;
@@ -40,25 +53,24 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
     });
   }
 
-  double get _total => _carrito.fold(0, (sum, linea) => sum + linea.subtotal);
+  double get _total => _carrito.fold(0, (sum, l) => sum + l.subtotal);
 
   void _agregarVariante(Variante variante) {
-    final coincidencias = _carrito.where((l) => l.variante.id == variante.id);
-    final existente = coincidencias.isEmpty ? null : coincidencias.first;
+    final existente = _carrito.where((l) => l.variante.id == variante.id).firstOrNull;
     setState(() {
       if (existente != null) {
         existente.cantidad += 1;
       } else {
-        _carrito.add(_LineaCarrito(variante: variante, cantidad: 1));
+        _carrito.add(_LineaCarrito(
+          variante: variante,
+          nombreProducto: _productoSeleccionado!.nombre,
+          cantidad: 1,
+        ));
       }
     });
   }
 
-  void _quitarLinea(_LineaCarrito linea) {
-    setState(() => _carrito.remove(linea));
-  }
-
-  void _cambiarCantidad(_LineaCarrito linea, double nuevaCantidad) {
+  void _cambiarCantidad(_LineaCarrito linea, int nuevaCantidad) {
     setState(() {
       if (nuevaCantidad <= 0) {
         _carrito.remove(linea);
@@ -66,6 +78,17 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
         linea.cantidad = nuevaCantidad;
       }
     });
+  }
+
+  Future<void> _seleccionarCliente(List<Cliente> clientes) async {
+    final seleccionado = await showModalBottomSheet<Cliente>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _BuscadorClientes(clientes: clientes),
+    );
+    if (seleccionado != null) {
+      setState(() => _clienteSeleccionado = seleccionado);
+    }
   }
 
   Future<void> _guardarVenta() async {
@@ -85,7 +108,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
     final detalles = _carrito
         .map((l) => DetalleVenta(
               varianteId: l.variante.id,
-              cantidad: l.cantidad,
+              cantidad: l.cantidad.toDouble(),
               precioUnitario: l.variante.precio,
             ))
         .toList();
@@ -111,22 +134,51 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
     }
   }
 
+  Future<bool> _confirmarDescarte() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Salir sin guardar?'),
+        content: const Text('Tienes productos en el carrito. Si salís ahora se perderán.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+    );
+    return confirmar == true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final clientesProvider = context.watch<ClientesProvider>();
     final productosProvider = context.watch<ProductosProvider>();
-    // Solo interesan los productos que ya tienen al menos una variante registrada.
     final productosConVariantes =
         productosProvider.productos.where((p) => p.variantes.isNotEmpty).toList();
 
-    return Scaffold(
+    return PopScope(
+      canPop: _carrito.isEmpty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final nav = Navigator.of(context);
+        if (await _confirmarDescarte() && mounted) {
+          nav.pop();
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(title: const Text('Nueva venta')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Selector de cliente
+            // ── Selector de cliente con búsqueda ──
             if (clientesProvider.cargando)
               EstadoCargando(avisoServidorLento: clientesProvider.avisoServidorLento)
             else if (clientesProvider.error != null)
@@ -135,22 +187,29 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                 onReintentar: () => clientesProvider.cargar(),
               )
             else
-              DropdownButtonFormField<Cliente>(
-                initialValue: _clienteSeleccionado,
-                decoration: const InputDecoration(
-                  labelText: 'Cliente',
-                  border: OutlineInputBorder(),
+              GestureDetector(
+                onTap: () => _seleccionarCliente(clientesProvider.clientes),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Cliente',
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.search),
+                  ),
+                  child: Text(
+                    _clienteSeleccionado?.nombre ?? 'Buscar cliente…',
+                    style: TextStyle(
+                      color: _clienteSeleccionado != null
+                          ? Theme.of(context).textTheme.bodyLarge?.color
+                          : Theme.of(context).hintColor,
+                    ),
+                  ),
                 ),
-                items: clientesProvider.clientes
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c.nombre)))
-                    .toList(),
-                onChanged: (c) => setState(() => _clienteSeleccionado = c),
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Selector de estado inicial
+            // ── Estado inicial ──
             DropdownButtonFormField<EstadoVenta>(
-              initialValue: _estadoSeleccionado,
+              value: _estadoSeleccionado,
               decoration: const InputDecoration(
                 labelText: 'Estado',
                 border: OutlineInputBorder(),
@@ -160,9 +219,9 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                   .toList(),
               onChanged: (e) => setState(() => _estadoSeleccionado = e!),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Selector de variantes para agregar al carrito, agrupadas por producto base
+            // ── Selector de producto ──
             if (productosProvider.cargando)
               EstadoCargando(avisoServidorLento: productosProvider.avisoServidorLento)
             else if (productosProvider.error != null)
@@ -172,41 +231,40 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
               )
             else if (productosConVariantes.isEmpty)
               const Text('Todavía no hay variantes de producto registradas.')
-            else
-              SizedBox(
-                height: 160,
-                child: ListView(
-                  children: productosConVariantes.map((producto) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(producto.nombre, style: Theme.of(context).textTheme.labelLarge),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: producto.variantes
-                                .map(
-                                  (v) => ActionChip(
-                                    avatar: const Icon(Icons.add, size: 18),
-                                    label: Text('${v.nombre} (\$${v.precio.toStringAsFixed(2)})'),
-                                    onPressed: () => _agregarVariante(v),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+            else ...[
+              DropdownButtonFormField<Producto>(
+                value: _productoSeleccionado,
+                decoration: const InputDecoration(
+                  labelText: 'Producto',
+                  border: OutlineInputBorder(),
                 ),
+                items: productosConVariantes
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p.nombre)))
+                    .toList(),
+                onChanged: (p) => setState(() => _productoSeleccionado = p),
               ),
-            const SizedBox(height: 16),
-            const Divider(),
+              if (_productoSeleccionado != null) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _productoSeleccionado!.variantes
+                      .map(
+                        (v) => ActionChip(
+                          avatar: const Icon(Icons.add, size: 18),
+                          label: Text('${v.nombre}  ${_formatPrecio(v.precio)}'),
+                          onPressed: () => _agregarVariante(v),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ],
 
-            // Carrito
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+
+            // ── Carrito (ocupa el espacio restante) ──
             Expanded(
               child: _carrito.isEmpty
                   ? const Center(child: Text('Agrega productos tocando los chips de arriba'))
@@ -215,25 +273,29 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                       itemBuilder: (context, index) {
                         final linea = _carrito[index];
                         return ListTile(
-                          title: Text(linea.variante.nombreCompleto()),
+                          dense: true,
+                          title: Text(linea.titulo),
                           subtitle: Text(
-                            '\$${linea.variante.precio.toStringAsFixed(2)} x ${linea.cantidad} = \$${linea.subtotal.toStringAsFixed(2)}',
+                            '${_formatPrecio(linea.variante.precio)} x ${linea.cantidad} = ${_formatPrecio(linea.subtotal)}',
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.remove_circle_outline),
-                                onPressed: () => _cambiarCantidad(linea, linea.cantidad - 1),
+                                onPressed: () =>
+                                    _cambiarCantidad(linea, linea.cantidad - 1),
                               ),
-                              Text(linea.cantidad.toStringAsFixed(0)),
+                              Text('${linea.cantidad}'),
                               IconButton(
                                 icon: const Icon(Icons.add_circle_outline),
-                                onPressed: () => _cambiarCantidad(linea, linea.cantidad + 1),
+                                onPressed: () =>
+                                    _cambiarCantidad(linea, linea.cantidad + 1),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline),
-                                onPressed: () => _quitarLinea(linea),
+                                onPressed: () =>
+                                    setState(() => _carrito.remove(linea)),
                               ),
                             ],
                           ),
@@ -241,7 +303,8 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                       },
                     ),
             ),
-            const Divider(),
+
+            const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
@@ -249,7 +312,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                 children: [
                   Text('Total estimado', style: Theme.of(context).textTheme.titleMedium),
                   Text(
-                    '\$${_total.toStringAsFixed(2)}',
+                    _formatPrecio(_total),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ],
@@ -274,6 +337,95 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
           ],
         ),
       ),
+    ),
+  );
+  }
+}
+
+class _BuscadorClientes extends StatefulWidget {
+  final List<Cliente> clientes;
+
+  const _BuscadorClientes({required this.clientes});
+
+  @override
+  State<_BuscadorClientes> createState() => _BuscadorClientesState();
+}
+
+class _BuscadorClientesState extends State<_BuscadorClientes> {
+  final _controller = TextEditingController();
+  List<Cliente> _filtrados = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filtrados = widget.clientes;
+    _controller.addListener(_filtrar);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _filtrar() {
+    final q = _controller.text.toLowerCase();
+    setState(() {
+      _filtrados = widget.clientes
+          .where((c) => c.nombre.toLowerCase().contains(q))
+          .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            children: [
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Buscar cliente…',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _filtrados.isEmpty
+                    ? const Center(child: Text('Sin resultados'))
+                    : ListView.separated(
+                        controller: scrollController,
+                        itemCount: _filtrados.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final c = _filtrados[index];
+                          return ListTile(
+                            leading: const Icon(Icons.person_outline),
+                            title: Text(c.nombre),
+                            subtitle: c.telefono != null ? Text(c.telefono!) : null,
+                            onTap: () => Navigator.of(context).pop(c),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

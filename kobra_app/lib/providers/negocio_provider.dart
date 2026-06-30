@@ -29,11 +29,11 @@ class NegocioProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
 
     try {
       _negocio = await _service.obtener();
-      _verificado = true;
       marcarCargado();
     } on ApiException catch (e) {
       _error = e.mensaje;
     } finally {
+      _verificado = true;
       detenerAvisoServidorLento();
       _cargando = false;
       notifyListeners();
@@ -63,5 +63,7 @@ class NegocioProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
     _negocio = null;
     _verificado = false;
     _error = null;
+    invalidarCache();
+    notifyListeners();
   }
 }

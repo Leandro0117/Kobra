@@ -15,6 +15,15 @@ class ClientesScreen extends StatefulWidget {
 }
 
 class _ClientesScreenState extends State<ClientesScreen> {
+  final _busquedaController = TextEditingController();
+  String _busqueda = '';
+
+  @override
+  void dispose() {
+    _busquedaController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -121,6 +130,11 @@ class _ClientesScreenState extends State<ClientesScreen> {
   Widget build(BuildContext context) {
     final clientesProvider = context.watch<ClientesProvider>();
     final esAdmin = context.watch<AuthProvider>().usuario?.rol == Rol.ADMIN;
+    final filtrados = _busqueda.isEmpty
+        ? clientesProvider.clientes
+        : clientesProvider.clientes
+            .where((c) => c.nombre.toLowerCase().contains(_busqueda.toLowerCase()))
+            .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Clientes')),
@@ -142,13 +156,40 @@ class _ClientesScreenState extends State<ClientesScreen> {
           if (clientesProvider.clientes.isEmpty) {
             return const Center(child: Text('Todavía no hay clientes registrados.'));
           }
-          return RefreshIndicator(
-            onRefresh: clientesProvider.cargar,
-            child: ListView.separated(
-              itemCount: clientesProvider.clientes.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final cliente = clientesProvider.clientes[index];
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: TextField(
+                  controller: _busquedaController,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar cliente…',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _busqueda.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _busquedaController.clear();
+                              setState(() => _busqueda = '');
+                            },
+                          )
+                        : null,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: (v) => setState(() => _busqueda = v),
+                ),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => clientesProvider.cargar(forzar: true),
+                  child: filtrados.isEmpty
+                      ? const Center(child: Text('Sin resultados'))
+                      : ListView.separated(
+                          itemCount: filtrados.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final cliente = filtrados[index];
                 return ListTile(
                   leading: const Icon(Icons.person_outline),
                   title: Text(cliente.nombre),
@@ -168,17 +209,20 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           ],
                         )
                       : null,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => DetalleClienteScreen(clienteId: cliente.id),
-                    ),
-                  ),
-                );
-              },
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DetalleClienteScreen(clienteId: cliente.id),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
-          );
-        },
-      ),
-    );
+          ],
+        );
+      },
+    ),
+  );
   }
 }

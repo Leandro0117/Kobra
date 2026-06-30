@@ -75,15 +75,22 @@ class _RaizAppState extends State<_RaizApp> {
     }
 
     if (!authProvider.estaAutenticado) {
-      _estabaAutenticado = false;
+      if (_estabaAutenticado) {
+        // Sesión cerrada: reinicia negocio para re-verificar en el próximo login.
+        _estabaAutenticado = false;
+        Future.microtask(negocioProvider.reiniciar);
+      }
       return const LoginScreen();
     }
 
     if (!_estabaAutenticado) {
-      // Recién se autenticó (login o sesión restaurada): reinicia el estado
-      // del negocio para que se vuelva a verificar contra el backend.
+      // Recién autenticado: programa el reinicio y la carga del negocio fuera
+      // del build para evitar el frame fantasma entre reiniciar() y cargar().
       _estabaAutenticado = true;
-      negocioProvider.reiniciar();
+      Future.microtask(() {
+        negocioProvider.reiniciar();
+        negocioProvider.cargar();
+      });
     }
 
     final esAdmin = authProvider.usuario!.rol == Rol.ADMIN;
@@ -91,15 +98,14 @@ class _RaizAppState extends State<_RaizApp> {
       return const HomeScreen();
     }
 
-    if (!negocioProvider.verificado && !negocioProvider.cargando) {
-      // No se puede llamar directo: cargar() notifica de inmediato y eso
-      // dispararía un rebuild en medio de este build.
-      Future.microtask(negocioProvider.cargar);
-    }
-    if (negocioProvider.cargando && !negocioProvider.verificado) {
+    // Mientras negocio no esté verificado (cargando o aún no arrancó), splash.
+    if (!negocioProvider.verificado) {
       return const SplashScreen();
     }
-    if (negocioProvider.negocio == null) {
+    // Solo pedir registro si el servidor confirmó que no existe (sin error).
+    // Si cargar() falló (red, auth, etc.) el error no es null: se va al home
+    // y la app funciona con normalidad.
+    if (negocioProvider.negocio == null && negocioProvider.error == null) {
       return const RegistroNegocioScreen();
     }
     return const HomeScreen();

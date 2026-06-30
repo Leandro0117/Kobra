@@ -11,8 +11,8 @@
 ///   - Vuelve a compilar la app (o hacer hot-restart) para que tome el cambio.
 class ApiConfig {
   // static const String baseUrl = 'http://localhost:3000'; // Local
-  static const String baseUrl = 'http://192.168.128.8:3000'; // Local
-  // static const String baseUrl = 'https://kobra-6y6c.onrender.com'; // Render
+  // static const String baseUrl = 'http://192.168.128.8:3000'; // Local
+  static const String baseUrl = 'https://kobra-6y6c.onrender.com'; // Render
 
   /// Render free tier "duerme" el servicio tras inactividad. La primera
   /// petición tras el sueño puede tardar bastante en responder.
