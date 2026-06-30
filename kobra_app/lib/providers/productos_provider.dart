@@ -55,10 +55,8 @@ class ProductosProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin 
   Future<bool> actualizar(int id, String nombre) async {
     _error = null;
     try {
-      final actualizado = await _service.actualizar(id, nombre);
-      _productos = _productos.map((p) => p.id == id ? actualizado : p).toList();
-      notifyListeners();
-      return true;
+      await _service.actualizar(id, nombre);
+      return _refrescarProducto(id);
     } on ApiException catch (e) {
       _error = e.mensaje;
       notifyListeners();

@@ -23,6 +23,23 @@ class InsumosService {
     return Insumo.fromJson(response.data!);
   }
 
+  Future<Insumo> actualizar({
+    required int id,
+    required String nombre,
+    UnidadInsumo? unidad,
+    double? precio,
+  }) async {
+    final response = await ApiClient.patch<Map<String, dynamic>>(
+      '/insumos/$id',
+      data: {
+        'nombre': nombre,
+        'unidad': unidad?.name,
+        'precio': precio,
+      },
+    );
+    return Insumo.fromJson(response.data!);
+  }
+
   Future<void> eliminar(int id) async {
     await ApiClient.delete('/insumos/$id');
   }

@@ -21,17 +21,19 @@ class _InsumosScreenState extends State<InsumosScreen> {
     });
   }
 
-  Future<void> _mostrarFormularioNuevoInsumo() async {
-    final nombreController = TextEditingController();
-    final precioController = TextEditingController();
-    UnidadInsumo? unidadSeleccionada;
+  Future<void> _mostrarFormulario({Insumo? existente}) async {
+    final nombreController = TextEditingController(text: existente?.nombre);
+    final precioController = TextEditingController(
+      text: existente?.precio != null ? existente!.precio.toString() : '',
+    );
+    UnidadInsumo? unidadSeleccionada = existente?.unidad;
     final formKey = GlobalKey<FormState>();
 
     final guardar = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Nuevo insumo'),
+          title: Text(existente == null ? 'Nuevo insumo' : 'Editar insumo'),
           content: Form(
             key: formKey,
             child: Column(
@@ -89,16 +91,18 @@ class _InsumosScreenState extends State<InsumosScreen> {
       final precio = precioController.text.trim().isEmpty
           ? null
           : double.tryParse(precioController.text.trim());
-      final ok = await context.read<InsumosProvider>().crear(
-            nombreController.text.trim(),
-            unidadSeleccionada,
-            precio,
-          );
+      final provider = context.read<InsumosProvider>();
+      final bool ok;
+      if (existente == null) {
+        ok = await provider.crear(nombreController.text.trim(), unidadSeleccionada, precio);
+      } else {
+        ok = await provider.actualizar(existente.id, nombreController.text.trim(), unidadSeleccionada, precio);
+      }
       if (!mounted) return;
       if (!ok) {
-        final error = context.read<InsumosProvider>().error;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error ?? 'No se pudo crear el insumo')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.read<InsumosProvider>().error ?? 'No se pudo guardar el insumo')),
+        );
       }
     }
   }
@@ -141,7 +145,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Insumos')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _mostrarFormularioNuevoInsumo,
+        onPressed: _mostrarFormulario,
         child: const Icon(Icons.add),
       ),
       body: Builder(
@@ -174,9 +178,18 @@ class _InsumosScreenState extends State<InsumosScreen> {
                           if (insumo.precio != null) formatPrecio(insumo.precio!),
                         ].join(' · '))
                       : null,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _confirmarEliminar(insumo),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        onPressed: () => _mostrarFormulario(existente: insumo),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => _confirmarEliminar(insumo),
+                      ),
+                    ],
                   ),
                 );
               },

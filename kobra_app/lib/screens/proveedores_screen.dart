@@ -20,15 +20,15 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
     });
   }
 
-  Future<void> _mostrarFormularioNuevoProveedor() async {
-    final nombreController = TextEditingController();
-    final telefonoController = TextEditingController();
+  Future<void> _mostrarFormulario({Proveedor? existente}) async {
+    final nombreController = TextEditingController(text: existente?.nombre);
+    final telefonoController = TextEditingController(text: existente?.telefono ?? '');
     final formKey = GlobalKey<FormState>();
 
     final guardar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nuevo proveedor'),
+        title: Text(existente == null ? 'Nuevo proveedor' : 'Editar proveedor'),
         content: Form(
           key: formKey,
           child: Column(
@@ -63,15 +63,20 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
     );
 
     if (guardar == true && mounted) {
-      final ok = await context.read<ProveedoresProvider>().crear(
-            nombreController.text.trim(),
-            telefonoController.text.trim(),
-          );
+      final provider = context.read<ProveedoresProvider>();
+      final nombre = nombreController.text.trim();
+      final telefono = telefonoController.text.trim().isEmpty ? null : telefonoController.text.trim();
+      final bool ok;
+      if (existente == null) {
+        ok = await provider.crear(nombre, telefono);
+      } else {
+        ok = await provider.actualizar(existente.id, nombre, telefono);
+      }
       if (!mounted) return;
       if (!ok) {
-        final error = context.read<ProveedoresProvider>().error;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error ?? 'No se pudo crear el proveedor')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.read<ProveedoresProvider>().error ?? 'No se pudo guardar el proveedor')),
+        );
       }
     }
   }
@@ -114,7 +119,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Proveedores')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _mostrarFormularioNuevoProveedor,
+        onPressed: _mostrarFormulario,
         child: const Icon(Icons.add),
       ),
       body: Builder(
@@ -142,9 +147,18 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
                   leading: const Icon(Icons.local_shipping_outlined),
                   title: Text(proveedor.nombre),
                   subtitle: proveedor.telefono != null ? Text(proveedor.telefono!) : null,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _confirmarEliminar(proveedor),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        onPressed: () => _mostrarFormulario(existente: proveedor),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => _confirmarEliminar(proveedor),
+                      ),
+                    ],
                   ),
                 );
               },

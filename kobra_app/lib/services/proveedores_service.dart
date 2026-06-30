@@ -18,6 +18,21 @@ class ProveedoresService {
     return Proveedor.fromJson(response.data!);
   }
 
+  Future<Proveedor> actualizar({
+    required int id,
+    required String nombre,
+    String? telefono,
+  }) async {
+    final response = await ApiClient.patch<Map<String, dynamic>>(
+      '/proveedores/$id',
+      data: {
+        'nombre': nombre,
+        if (telefono != null && telefono.isNotEmpty) 'telefono': telefono,
+      },
+    );
+    return Proveedor.fromJson(response.data!);
+  }
+
   Future<void> eliminar(int id) async {
     await ApiClient.delete('/proveedores/$id');
   }

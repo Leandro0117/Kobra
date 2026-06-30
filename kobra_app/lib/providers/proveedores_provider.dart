@@ -50,6 +50,22 @@ class ProveedoresProvider extends ChangeNotifier with CargaLentaMixin, CacheMixi
     }
   }
 
+  Future<bool> actualizar(int id, String nombre, String? telefono) async {
+    _error = null;
+    try {
+      final actualizado = await _service.actualizar(id: id, nombre: nombre, telefono: telefono);
+      _proveedores = [
+        for (final p in _proveedores) (p.id == id ? actualizado : p),
+      ]..sort((a, b) => a.nombre.compareTo(b.nombre));
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> eliminar(int id) async {
     _error = null;
     try {

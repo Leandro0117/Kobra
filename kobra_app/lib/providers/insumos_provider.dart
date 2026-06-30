@@ -50,6 +50,22 @@ class InsumosProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
     }
   }
 
+  Future<bool> actualizar(int id, String nombre, UnidadInsumo? unidad, double? precio) async {
+    _error = null;
+    try {
+      final actualizado = await _service.actualizar(id: id, nombre: nombre, unidad: unidad, precio: precio);
+      _insumos = [
+        for (final i in _insumos) (i.id == id ? actualizado : i),
+      ]..sort((a, b) => a.nombre.compareTo(b.nombre));
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> eliminar(int id) async {
     _error = null;
     try {
