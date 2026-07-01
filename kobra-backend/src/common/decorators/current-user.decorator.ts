@@ -4,6 +4,7 @@ export interface UsuarioActual {
   userId: number;
   email: string;
   rol: 'ADMIN' | 'VENDEDOR';
+  negocioId: number;
 }
 
 export const CurrentUser = createParamDecorator(

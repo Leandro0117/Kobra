@@ -8,29 +8,37 @@ import { esErrorDeForeignKey } from '../common/prisma-errors';
 export class VariantesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(productoId: number, dto: CreateVarianteDto) {
-    const producto = await this.prisma.producto.findUnique({ where: { id: productoId } });
-    if (!producto) {
-      throw new NotFoundException(`Producto ${productoId} no encontrado`);
-    }
+  async create(productoId: number, dto: CreateVarianteDto, negocioId: number) {
+    const producto = await this.prisma.producto.findUnique({ where: { id: productoId, negocioId } });
+    if (!producto) throw new NotFoundException(`Producto ${productoId} no encontrado`);
     return this.prisma.variante.create({ data: { ...dto, productoId } });
   }
 
   async findOne(id: number) {
     const variante = await this.prisma.variante.findUnique({ where: { id } });
-    if (!variante) {
-      throw new NotFoundException(`Variante ${id} no encontrada`);
-    }
+    if (!variante) throw new NotFoundException(`Variante ${id} no encontrada`);
     return variante;
   }
 
-  async update(id: number, dto: UpdateVarianteDto) {
-    await this.findOne(id);
+  async update(id: number, dto: UpdateVarianteDto, negocioId: number) {
+    const variante = await this.prisma.variante.findUnique({
+      where: { id },
+      include: { producto: true },
+    });
+    if (!variante || variante.producto.negocioId !== negocioId) {
+      throw new NotFoundException(`Variante ${id} no encontrada`);
+    }
     return this.prisma.variante.update({ where: { id }, data: dto });
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
+  async remove(id: number, negocioId: number) {
+    const variante = await this.prisma.variante.findUnique({
+      where: { id },
+      include: { producto: true },
+    });
+    if (!variante || variante.producto.negocioId !== negocioId) {
+      throw new NotFoundException(`Variante ${id} no encontrada`);
+    }
     try {
       return await this.prisma.variante.delete({ where: { id } });
     } catch (error) {

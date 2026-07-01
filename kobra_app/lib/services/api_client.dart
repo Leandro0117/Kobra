@@ -5,9 +5,6 @@ import 'token_storage.dart';
 
 /// Cliente HTTP centralizado. Agrega el JWT a cada petición y traduce los
 /// errores de Dio a [ApiException] con mensajes ya listos para mostrar.
-///
-/// Callback opcional que se dispara cuando el backend responde 401
-/// (token vencido o inválido): lo usa AuthProvider para cerrar sesión.
 class ApiClient {
   static void Function()? onUnauthorized;
 
@@ -27,10 +24,7 @@ class ApiClient {
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }
-    } catch (_) {
-      // Storage inaccesible o timeout: la petición continúa sin token y el
-      // backend responderá 401 si la ruta lo requiere.
-    }
+    } catch (_) {}
   }
 
   static bool _interceptorInstalado = false;
@@ -101,18 +95,25 @@ class ApiClient {
 
     final statusCode = e.response?.statusCode;
     final data = e.response?.data;
-    String mensaje = 'Ocurrió un error inesperado. Intenta de nuevo.';
 
+    // Extraer el mensaje del body si el backend lo envía.
     if (data is Map && data['message'] != null) {
       final m = data['message'];
-      mensaje = m is List ? m.join(', ') : m.toString();
-    } else if (statusCode == 401) {
-      mensaje = 'Tu sesión expiró. Vuelve a iniciar sesión.';
-    } else if (statusCode == 403) {
-      mensaje = 'No tienes permiso para hacer esto.';
-    } else if (statusCode == 404) {
-      mensaje = 'No se encontró el recurso solicitado.';
+      final texto = m is List ? m.join(', ') : m.toString();
+      return ApiException(texto, statusCode: statusCode);
     }
+
+    // Sin body útil: usar mensaje según código HTTP.
+    final mensaje = switch (statusCode) {
+      401 => 'No autorizado. Verifica tus credenciales o vuelve a iniciar sesión.',
+      403 => 'No tienes permiso para realizar esta acción.',
+      404 => 'No se encontró el recurso solicitado.',
+      409 => 'Ya existe un registro con esos datos.',
+      422 => 'Los datos enviados no son válidos.',
+      500 => 'Error interno del servidor. Intenta de nuevo más tarde.',
+      null => 'No se recibió respuesta del servidor. Revisa tu conexión.',
+      _ => 'Error del servidor ($statusCode). Intenta de nuevo.',
+    };
 
     return ApiException(mensaje, statusCode: statusCode);
   }

@@ -9,12 +9,14 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Rol } from '@prisma/client';
 import { InsumosService } from './insumos.service';
 import { CreateInsumoDto } from './dto/create-insumo.dto';
 import { UpdateInsumoDto } from './dto/update-insumo.dto';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { Rol } from '@prisma/client';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { UsuarioActual } from '../common/decorators/current-user.decorator';
 
 @Controller('insumos')
 @UseGuards(RolesGuard)
@@ -23,27 +25,31 @@ export class InsumosController {
   constructor(private insumosService: InsumosService) {}
 
   @Post()
-  create(@Body() dto: CreateInsumoDto) {
-    return this.insumosService.create(dto);
+  create(@Body() dto: CreateInsumoDto, @CurrentUser() usuario: UsuarioActual) {
+    return this.insumosService.create(dto, usuario.negocioId);
   }
 
   @Get()
-  findAll() {
-    return this.insumosService.findAll();
+  findAll(@CurrentUser() usuario: UsuarioActual) {
+    return this.insumosService.findAll(usuario.negocioId);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.insumosService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() usuario: UsuarioActual) {
+    return this.insumosService.findOne(id, usuario.negocioId);
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInsumoDto) {
-    return this.insumosService.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateInsumoDto,
+    @CurrentUser() usuario: UsuarioActual,
+  ) {
+    return this.insumosService.update(id, dto, usuario.negocioId);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.insumosService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() usuario: UsuarioActual) {
+    return this.insumosService.remove(id, usuario.negocioId);
   }
 }

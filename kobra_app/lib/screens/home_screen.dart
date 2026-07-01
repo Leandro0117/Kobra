@@ -7,6 +7,7 @@ import '../widgets/menu_opciones.dart';
 import 'ventas_menu_screen.dart';
 import 'gastos_menu_screen.dart';
 import 'finanzas_screen.dart';
+import 'vendedores_screen.dart';
 import 'registro_negocio_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -18,9 +19,6 @@ class HomeScreen extends StatelessWidget {
     final usuario = authProvider.usuario!;
     final esAdmin = usuario.rol == Rol.ADMIN;
 
-    // VENDEDOR solo tiene el apartado de ventas, así que va directo a esas
-    // opciones sin pasar por un selector de secciones. ADMIN ve los tres
-    // apartados del negocio (Ventas / Gastos / Finanzas).
     final opciones = esAdmin
         ? <OpcionMenu>[
             OpcionMenu(
@@ -42,6 +40,13 @@ class HomeScreen extends StatelessWidget {
               icono: Icons.dashboard_outlined,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const FinanzasScreen()),
+              ),
+            ),
+            OpcionMenu(
+              titulo: 'Vendedores',
+              icono: Icons.people_outline,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const VendedoresScreen()),
               ),
             ),
             OpcionMenu(

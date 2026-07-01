@@ -22,9 +22,8 @@ export interface ResumenProducto {
 export class EstadisticasService {
   constructor(private prisma: PrismaService) {}
 
-  async obtenerResumen(filtro: FiltroEstadisticasDto) {
-    // Las ventas CANCELADO no cuentan: no representan una venta real.
-    const where: Prisma.VentaWhereInput = { estado: { not: 'CANCELADO' } };
+  async obtenerResumen(filtro: FiltroEstadisticasDto, negocioId: number) {
+    const where: Prisma.VentaWhereInput = { negocioId, estado: { not: 'CANCELADO' } };
 
     if (filtro.desde || filtro.hasta) {
       where.fecha = {

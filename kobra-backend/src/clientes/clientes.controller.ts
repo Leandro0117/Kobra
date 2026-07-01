@@ -9,49 +9,53 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Rol } from '@prisma/client';
 import { ClientesService } from './clientes.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { Rol } from '@prisma/client';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { UsuarioActual } from '../common/decorators/current-user.decorator';
 
 @Controller('clientes')
 @UseGuards(RolesGuard)
 export class ClientesController {
   constructor(private clientesService: ClientesService) {}
 
-  // ADMIN y VENDEDOR pueden registrar clientes nuevos (lo necesitan al vender en terreno)
   @Post()
-  create(@Body() dto: CreateClienteDto) {
-    return this.clientesService.create(dto);
+  create(@Body() dto: CreateClienteDto, @CurrentUser() usuario: UsuarioActual) {
+    return this.clientesService.create(dto, usuario.negocioId);
   }
 
   @Get()
-  findAll() {
-    return this.clientesService.findAll();
+  findAll(@CurrentUser() usuario: UsuarioActual) {
+    return this.clientesService.findAll(usuario.negocioId);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.clientesService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() usuario: UsuarioActual) {
+    return this.clientesService.findOne(id, usuario.negocioId);
   }
 
   @Get(':id/detalle')
-  obtenerDetalle(@Param('id', ParseIntPipe) id: number) {
-    return this.clientesService.obtenerDetalle(id);
+  obtenerDetalle(@Param('id', ParseIntPipe) id: number, @CurrentUser() usuario: UsuarioActual) {
+    return this.clientesService.obtenerDetalle(id, usuario.negocioId);
   }
 
-  // Solo ADMIN puede editar o eliminar clientes existentes
   @Patch(':id')
   @Roles(Rol.ADMIN)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateClienteDto) {
-    return this.clientesService.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateClienteDto,
+    @CurrentUser() usuario: UsuarioActual,
+  ) {
+    return this.clientesService.update(id, dto, usuario.negocioId);
   }
 
   @Delete(':id')
   @Roles(Rol.ADMIN)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.clientesService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() usuario: UsuarioActual) {
+    return this.clientesService.remove(id, usuario.negocioId);
   }
 }

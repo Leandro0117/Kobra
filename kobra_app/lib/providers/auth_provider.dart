@@ -27,9 +27,6 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _restaurarSesion() async {
     try {
-      // Se acota con timeout: si el almacenamiento seguro no responde
-      // (por ejemplo, en un entorno sin el plugin nativo disponible),
-      // no debe dejar la app atascada en el splash para siempre.
       final usuarioJson =
           await TokenStorage.leerUsuarioJson().timeout(const Duration(seconds: 3));
       final token = await TokenStorage.leerToken().timeout(const Duration(seconds: 3));
@@ -37,7 +34,6 @@ class AuthProvider extends ChangeNotifier {
         _usuario = Usuario.fromJson(jsonDecode(usuarioJson) as Map<String, dynamic>);
       }
     } catch (_) {
-      // Sin sesión guardada o sin acceso al almacenamiento: se continúa al login.
     } finally {
       _verificandoSesion = false;
       notifyListeners();
@@ -64,6 +60,11 @@ class AuthProvider extends ChangeNotifier {
       _cargando = false;
       notifyListeners();
       return false;
+    } catch (e) {
+      _error = 'Error inesperado: $e';
+      _cargando = false;
+      notifyListeners();
+      return false;
     }
   }
 
@@ -71,19 +72,29 @@ class AuthProvider extends ChangeNotifier {
     required String nombre,
     required String email,
     required String password,
-    required Rol rol,
+    required String negocioNombre,
+    required String negocioMoneda,
   }) async {
     _cargando = true;
     _error = null;
     notifyListeners();
 
     try {
-      await _authService.registrar(nombre: nombre, email: email, password: password, rol: rol);
-      // El registro no devuelve sesión: se loguea aparte con las mismas
-      // credenciales para dejar al usuario adentro.
+      await _authService.registrar(
+        nombre: nombre,
+        email: email,
+        password: password,
+        negocioNombre: negocioNombre,
+        negocioMoneda: negocioMoneda,
+      );
       return await login(email, password);
     } on ApiException catch (e) {
       _error = e.mensaje;
+      _cargando = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = 'Error inesperado: $e';
       _cargando = false;
       notifyListeners();
       return false;

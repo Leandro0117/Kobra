@@ -8,33 +8,30 @@ import { esErrorDeForeignKey } from '../common/prisma-errors';
 export class ClientesService {
   constructor(private prisma: PrismaService) {}
 
-  create(dto: CreateClienteDto) {
-    return this.prisma.cliente.create({ data: dto });
+  create(dto: CreateClienteDto, negocioId: number) {
+    return this.prisma.cliente.create({ data: { ...dto, negocioId } });
   }
 
-  findAll() {
-    return this.prisma.cliente.findMany({ orderBy: { nombre: 'asc' } });
+  findAll(negocioId: number) {
+    return this.prisma.cliente.findMany({ where: { negocioId }, orderBy: { nombre: 'asc' } });
   }
 
-  async findOne(id: number) {
-    const cliente = await this.prisma.cliente.findUnique({ where: { id } });
-    if (!cliente) {
-      throw new NotFoundException(`Cliente ${id} no encontrado`);
-    }
+  async findOne(id: number, negocioId: number) {
+    const cliente = await this.prisma.cliente.findUnique({ where: { id, negocioId } });
+    if (!cliente) throw new NotFoundException(`Cliente ${id} no encontrado`);
     return cliente;
   }
 
-  async update(id: number, dto: UpdateClienteDto) {
-    await this.findOne(id);
+  async update(id: number, dto: UpdateClienteDto, negocioId: number) {
+    await this.findOne(id, negocioId);
     return this.prisma.cliente.update({ where: { id }, data: dto });
   }
 
-  async obtenerDetalle(id: number) {
-    const cliente = await this.findOne(id);
+  async obtenerDetalle(id: number, negocioId: number) {
+    const cliente = await this.findOne(id, negocioId);
 
-    // Las ventas CANCELADO no representan una compra real.
     const ventas = await this.prisma.venta.findMany({
-      where: { clienteId: id, estado: { not: 'CANCELADO' } },
+      where: { clienteId: id, negocioId, estado: { not: 'CANCELADO' } },
       include: { detalles: { include: { variante: { include: { producto: true } } } } },
     });
 
@@ -65,8 +62,8 @@ export class ClientesService {
     };
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
+  async remove(id: number, negocioId: number) {
+    await this.findOne(id, negocioId);
     try {
       return await this.prisma.cliente.delete({ where: { id } });
     } catch (error) {

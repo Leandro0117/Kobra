@@ -21,17 +21,37 @@ class AuthService {
     );
   }
 
-  // El backend no devuelve token al registrar, solo el usuario creado: hay
-  // que loguear aparte con las mismas credenciales para obtener la sesión.
+  Future<List<Map<String, dynamic>>> listarVendedores() async {
+    final response = await ApiClient.get<List<dynamic>>('/auth/vendedores');
+    return (response.data ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> crearVendedor({
+    required String nombre,
+    required String email,
+    required String password,
+  }) async {
+    await ApiClient.post<Map<String, dynamic>>(
+      '/auth/vendedores',
+      data: {'nombre': nombre, 'email': email, 'password': password},
+    );
+  }
+
   Future<void> registrar({
     required String nombre,
     required String email,
     required String password,
-    required Rol rol,
+    required String negocioNombre,
+    required String negocioMoneda,
   }) async {
     await ApiClient.post<Map<String, dynamic>>(
       '/auth/register',
-      data: {'nombre': nombre, 'email': email, 'password': password, 'rol': rol.name},
+      data: {
+        'nombre': nombre,
+        'email': email,
+        'password': password,
+        'negocio': {'nombre': negocioNombre, 'moneda': negocioMoneda},
+      },
     );
   }
 }

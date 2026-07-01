@@ -17,7 +17,7 @@ export class GastosService {
   async create(dto: CreateGastoDto, usuario: UsuarioActual) {
     const insumoIds = dto.detalles.map((d) => d.insumoId);
     const insumos = await this.prisma.insumo.findMany({
-      where: { id: { in: insumoIds } },
+      where: { id: { in: insumoIds }, negocioId: usuario.negocioId },
     });
 
     if (insumos.length !== new Set(insumoIds).size) {
@@ -25,16 +25,10 @@ export class GastosService {
     }
 
     const proveedor = await this.prisma.proveedor.findUnique({
-      where: { id: dto.proveedorId },
+      where: { id: dto.proveedorId, negocioId: usuario.negocioId },
     });
-    if (!proveedor) {
-      throw new BadRequestException('El proveedor indicado no existe');
-    }
+    if (!proveedor) throw new BadRequestException('El proveedor indicado no existe');
 
-    // El total se calcula SIEMPRE en el backend a partir de cantidad x precioUnitario.
-    // A diferencia de las ventas, el insumo no tiene un precio "oficial" en el catálogo
-    // (varía de compra en compra), así que el precioUnitario es el que ingresa quien
-    // registra el gasto; ya se validó arriba que los insumos referenciados existen.
     let total = 0;
     const detallesData = dto.detalles.map((d) => {
       total += d.precioUnitario * d.cantidad;
@@ -47,6 +41,7 @@ export class GastosService {
 
     return this.prisma.gasto.create({
       data: {
+        negocioId: usuario.negocioId,
         usuarioId: usuario.userId,
         proveedorId: dto.proveedorId,
         categoria: dto.categoria,
@@ -57,8 +52,8 @@ export class GastosService {
     });
   }
 
-  findAll(filtro: FiltroGastosDto) {
-    const where: Record<string, unknown> = {};
+  findAll(filtro: FiltroGastosDto, usuario: UsuarioActual) {
+    const where: Record<string, unknown> = { negocioId: usuario.negocioId };
     if (filtro.proveedorId) where.proveedorId = filtro.proveedorId;
     if (filtro.categoria) where.categoria = filtro.categoria;
 
@@ -69,19 +64,17 @@ export class GastosService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, usuario: UsuarioActual) {
     const gasto = await this.prisma.gasto.findUnique({
-      where: { id },
+      where: { id, negocioId: usuario.negocioId },
       include: INCLUDE_GASTO,
     });
-    if (!gasto) {
-      throw new NotFoundException(`Gasto ${id} no encontrado`);
-    }
+    if (!gasto) throw new NotFoundException(`Gasto ${id} no encontrado`);
     return gasto;
   }
 
-  async remove(id: number) {
-    const gasto = await this.findOne(id);
+  async remove(id: number, usuario: UsuarioActual) {
+    const gasto = await this.findOne(id, usuario);
     await this.prisma.$transaction([
       this.prisma.detalleGasto.deleteMany({ where: { gastoId: gasto.id } }),
       this.prisma.gasto.delete({ where: { id: gasto.id } }),

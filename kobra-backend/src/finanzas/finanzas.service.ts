@@ -12,7 +12,7 @@ export interface ResumenCategoriaGasto {
 export class FinanzasService {
   constructor(private prisma: PrismaService) {}
 
-  async obtenerResumen(filtro: FiltroFechasDto) {
+  async obtenerResumen(filtro: FiltroFechasDto, negocioId: number) {
     const rangoFecha =
       filtro.desde || filtro.hasta
         ? {
@@ -21,14 +21,14 @@ export class FinanzasService {
           }
         : undefined;
 
-    const whereVentaCobrada: Prisma.VentaWhereInput = { estado: 'PAGADO' };
-    const whereVentaPendiente: Prisma.VentaWhereInput = { estado: { in: ['PENDIENTE', 'POR_PAGAR'] } };
+    const whereVentaCobrada: Prisma.VentaWhereInput = { negocioId, estado: 'PAGADO' };
+    const whereVentaPendiente: Prisma.VentaWhereInput = { negocioId, estado: { in: ['PENDIENTE', 'POR_PAGAR'] } };
     if (rangoFecha) {
       whereVentaCobrada.fecha = rangoFecha;
       whereVentaPendiente.fecha = rangoFecha;
     }
 
-    const whereGasto: Prisma.GastoWhereInput = {};
+    const whereGasto: Prisma.GastoWhereInput = { negocioId };
     if (rangoFecha) whereGasto.fecha = rangoFecha;
 
     const [ventasCobradas, ventasPendientes, gastos] = await Promise.all([

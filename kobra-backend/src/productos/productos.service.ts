@@ -8,38 +8,35 @@ import { esErrorDeForeignKey } from '../common/prisma-errors';
 export class ProductosService {
   constructor(private prisma: PrismaService) {}
 
-  create(dto: CreateProductoDto) {
-    return this.prisma.producto.create({ data: dto });
+  create(dto: CreateProductoDto, negocioId: number) {
+    return this.prisma.producto.create({ data: { ...dto, negocioId } });
   }
 
-  findAll() {
+  findAll(negocioId: number) {
     return this.prisma.producto.findMany({
+      where: { negocioId },
       orderBy: { nombre: 'asc' },
       include: { variantes: { orderBy: { nombre: 'asc' } } },
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, negocioId: number) {
     const producto = await this.prisma.producto.findUnique({
-      where: { id },
+      where: { id, negocioId },
       include: { variantes: { orderBy: { nombre: 'asc' } } },
     });
-    if (!producto) {
-      throw new NotFoundException(`Producto ${id} no encontrado`);
-    }
+    if (!producto) throw new NotFoundException(`Producto ${id} no encontrado`);
     return producto;
   }
 
-  async update(id: number, dto: UpdateProductoDto) {
-    await this.findOne(id);
+  async update(id: number, dto: UpdateProductoDto, negocioId: number) {
+    await this.findOne(id, negocioId);
     return this.prisma.producto.update({ where: { id }, data: dto });
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
+  async remove(id: number, negocioId: number) {
+    await this.findOne(id, negocioId);
     try {
-      // Si el producto tiene variantes sin ventas asociadas, se eliminan junto con él.
-      // Si alguna variante sí tiene ventas, la transacción falla completa (no se borra nada).
       await this.prisma.$transaction([
         this.prisma.variante.deleteMany({ where: { productoId: id } }),
         this.prisma.producto.delete({ where: { id } }),

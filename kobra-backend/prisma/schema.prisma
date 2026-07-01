@@ -8,26 +8,33 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Información del negocio/emprendimiento. Es un registro único (singleton,
-// id fijo = 1): se completa una vez tras crear el usuario admin y se puede
-// editar después desde la app.
 model Negocio {
-  id        Int     @id @default(1)
-  nombre    String
-  direccion String?
-  telefono  String?
-  moneda    String
+  id          Int         @id @default(autoincrement())
+  nombre      String
+  direccion   String?
+  telefono    String?
+  moneda      String
+  creadoEn    DateTime    @default(now())
+  usuarios    Usuario[]
+  clientes    Cliente[]
+  productos   Producto[]
+  proveedores Proveedor[]
+  insumos     Insumo[]
+  ventas      Venta[]
+  gastos      Gasto[]
 }
 
 model Usuario {
-  id       Int      @id @default(autoincrement())
-  nombre   String
-  email    String   @unique
-  password String
-  rol      Rol
-  ventas   Venta[]
-  gastos   Gasto[]
-  creadoEn DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  negocio   Negocio  @relation(fields: [negocioId], references: [id])
+  negocioId Int
+  nombre    String
+  email     String   @unique
+  password  String
+  rol       Rol
+  ventas    Venta[]
+  gastos    Gasto[]
+  creadoEn  DateTime @default(now())
 }
 
 enum Rol {
@@ -36,16 +43,20 @@ enum Rol {
 }
 
 model Cliente {
-  id       Int      @id @default(autoincrement())
-  nombre   String
-  telefono String?
-  notas    String?
-  creadoEn DateTime @default(now())
-  ventas   Venta[]
+  id        Int      @id @default(autoincrement())
+  negocio   Negocio  @relation(fields: [negocioId], references: [id])
+  negocioId Int
+  nombre    String
+  telefono  String?
+  notas     String?
+  creadoEn  DateTime @default(now())
+  ventas    Venta[]
 }
 
 model Producto {
   id        Int        @id @default(autoincrement())
+  negocio   Negocio    @relation(fields: [negocioId], references: [id])
+  negocioId Int
   nombre    String
   variantes Variante[]
 }
@@ -62,6 +73,8 @@ model Variante {
 
 model Venta {
   id         Int            @id @default(autoincrement())
+  negocio    Negocio        @relation(fields: [negocioId], references: [id])
+  negocioId  Int
   vendedor   Usuario        @relation(fields: [vendedorId], references: [id])
   vendedorId Int
   cliente    Cliente        @relation(fields: [clienteId], references: [id])
@@ -91,23 +104,24 @@ model DetalleVenta {
 }
 
 // ===== Gastos (compra de insumos, proveedores, egresos en general) =====
-// Espejo del lado de Ventas: Proveedor ≈ Cliente, Insumo ≈ Producto (catálogo
-// plano, sin variantes), Gasto ≈ Venta, DetalleGasto ≈ DetalleVenta.
-// Toda esta sección es exclusiva de ADMIN.
 
 model Proveedor {
-  id       Int     @id @default(autoincrement())
-  nombre   String
-  telefono String?
-  gastos   Gasto[]
+  id        Int     @id @default(autoincrement())
+  negocio   Negocio @relation(fields: [negocioId], references: [id])
+  negocioId Int
+  nombre    String
+  telefono  String?
+  gastos    Gasto[]
 }
 
 model Insumo {
-  id       Int            @id @default(autoincrement())
-  nombre   String
-  unidad   UnidadInsumo?
-  precio   Float?
-  detalles DetalleGasto[]
+  id        Int            @id @default(autoincrement())
+  negocio   Negocio        @relation(fields: [negocioId], references: [id])
+  negocioId Int
+  nombre    String
+  unidad    UnidadInsumo?
+  precio    Float?
+  detalles  DetalleGasto[]
 }
 
 enum UnidadInsumo {
@@ -133,6 +147,8 @@ enum CategoriaGasto {
 
 model Gasto {
   id          Int            @id @default(autoincrement())
+  negocio     Negocio        @relation(fields: [negocioId], references: [id])
+  negocioId   Int
   usuario     Usuario        @relation(fields: [usuarioId], references: [id])
   usuarioId   Int
   proveedor   Proveedor      @relation(fields: [proveedorId], references: [id])

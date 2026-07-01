@@ -8,29 +8,27 @@ import { esErrorDeForeignKey } from '../common/prisma-errors';
 export class InsumosService {
   constructor(private prisma: PrismaService) {}
 
-  create(dto: CreateInsumoDto) {
-    return this.prisma.insumo.create({ data: dto });
+  create(dto: CreateInsumoDto, negocioId: number) {
+    return this.prisma.insumo.create({ data: { ...dto, negocioId } });
   }
 
-  findAll() {
-    return this.prisma.insumo.findMany({ orderBy: { nombre: 'asc' } });
+  findAll(negocioId: number) {
+    return this.prisma.insumo.findMany({ where: { negocioId }, orderBy: { nombre: 'asc' } });
   }
 
-  async findOne(id: number) {
-    const insumo = await this.prisma.insumo.findUnique({ where: { id } });
-    if (!insumo) {
-      throw new NotFoundException(`Insumo ${id} no encontrado`);
-    }
+  async findOne(id: number, negocioId: number) {
+    const insumo = await this.prisma.insumo.findUnique({ where: { id, negocioId } });
+    if (!insumo) throw new NotFoundException(`Insumo ${id} no encontrado`);
     return insumo;
   }
 
-  async update(id: number, dto: UpdateInsumoDto) {
-    await this.findOne(id);
+  async update(id: number, dto: UpdateInsumoDto, negocioId: number) {
+    await this.findOne(id, negocioId);
     return this.prisma.insumo.update({ where: { id }, data: dto });
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
+  async remove(id: number, negocioId: number) {
+    await this.findOne(id, negocioId);
     try {
       return await this.prisma.insumo.delete({ where: { id } });
     } catch (error) {
