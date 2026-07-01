@@ -26,6 +26,19 @@ class AuthService {
     return (response.data ?? []).cast<Map<String, dynamic>>();
   }
 
+  Future<void> actualizarVendedor({
+    required int id,
+    String? nombre,
+    String? email,
+    String? password,
+  }) async {
+    final data = <String, dynamic>{};
+    if (nombre != null) data['nombre'] = nombre;
+    if (email != null) data['email'] = email;
+    if (password != null) data['password'] = password;
+    await ApiClient.patch<Map<String, dynamic>>('/auth/vendedores/$id', data: data);
+  }
+
   Future<void> crearVendedor({
     required String nombre,
     required String email,

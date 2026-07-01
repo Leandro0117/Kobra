@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { Rol } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CrearVendedorDto } from './dto/crear-vendedor.dto';
+import { ActualizarVendedorDto } from './dto/actualizar-vendedor.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -32,6 +33,17 @@ export class AuthController {
   @Roles(Rol.ADMIN)
   listarVendedores(@CurrentUser() admin: UsuarioActual) {
     return this.authService.listarVendedores(admin);
+  }
+
+  @Patch('vendedores/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Rol.ADMIN)
+  actualizarVendedor(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ActualizarVendedorDto,
+    @CurrentUser() admin: UsuarioActual,
+  ) {
+    return this.authService.actualizarVendedor(id, dto, admin);
   }
 
   // Solo el ADMIN puede registrar vendedores en su negocio.

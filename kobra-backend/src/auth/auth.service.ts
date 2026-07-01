@@ -6,6 +6,7 @@ import { UsuarioActual } from '../common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CrearVendedorDto } from './dto/crear-vendedor.dto';
+import { ActualizarVendedorDto } from './dto/actualizar-vendedor.dto';
 
 @Injectable()
 export class AuthService {
@@ -73,6 +74,26 @@ export class AuthService {
       select: { id: true, nombre: true, email: true, rol: true, creadoEn: true },
       orderBy: { nombre: 'asc' },
     });
+  }
+
+  async actualizarVendedor(id: number, dto: ActualizarVendedorDto, admin: UsuarioActual) {
+    const vendedor = await this.prisma.usuario.findUnique({
+      where: { id, negocioId: admin.negocioId, rol: 'VENDEDOR' },
+    });
+    if (!vendedor) throw new ConflictException('Vendedor no encontrado');
+
+    const data: Record<string, unknown> = {};
+    if (dto.nombre) data.nombre = dto.nombre;
+    if (dto.email) data.email = dto.email;
+    if (dto.password) data.password = await bcrypt.hash(dto.password, 10);
+
+    const actualizado = await this.prisma.usuario.update({ where: { id }, data });
+    return {
+      id: actualizado.id,
+      nombre: actualizado.nombre,
+      email: actualizado.email,
+      rol: actualizado.rol,
+    };
   }
 
   async crearVendedor(dto: CrearVendedorDto, admin: UsuarioActual) {
