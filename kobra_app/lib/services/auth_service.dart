@@ -50,6 +50,16 @@ class AuthService {
     );
   }
 
+  Future<void> cambiarPassword({
+    required String passwordActual,
+    required String passwordNueva,
+  }) async {
+    await ApiClient.patch<Map<String, dynamic>>(
+      '/auth/me/password',
+      data: {'passwordActual': passwordActual, 'passwordNueva': passwordNueva},
+    );
+  }
+
   Future<void> registrar({
     required String nombre,
     required String email,

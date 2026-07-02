@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CrearVendedorDto } from './dto/crear-vendedor.dto';
 import { ActualizarVendedorDto } from './dto/actualizar-vendedor.dto';
+import { CambiarPasswordDto } from './dto/cambiar-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -94,6 +95,18 @@ export class AuthService {
       email: actualizado.email,
       rol: actualizado.rol,
     };
+  }
+
+  async cambiarPassword(dto: CambiarPasswordDto, usuario: UsuarioActual) {
+    const user = await this.prisma.usuario.findUnique({ where: { id: usuario.userId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const valida = await bcrypt.compare(dto.passwordActual, user.password);
+    if (!valida) throw new UnauthorizedException('La contraseña actual es incorrecta');
+
+    const hash = await bcrypt.hash(dto.passwordNueva, 10);
+    await this.prisma.usuario.update({ where: { id: usuario.userId }, data: { password: hash } });
+    return { mensaje: 'Contraseña actualizada correctamente' };
   }
 
   async crearVendedor(dto: CrearVendedorDto, admin: UsuarioActual) {

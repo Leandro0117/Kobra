@@ -5,6 +5,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CrearVendedorDto } from './dto/crear-vendedor.dto';
 import { ActualizarVendedorDto } from './dto/actualizar-vendedor.dto';
+import { CambiarPasswordDto } from './dto/cambiar-password.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -44,6 +45,11 @@ export class AuthController {
     @CurrentUser() admin: UsuarioActual,
   ) {
     return this.authService.actualizarVendedor(id, dto, admin);
+  }
+
+  @Patch('me/password')
+  cambiarPassword(@Body() dto: CambiarPasswordDto, @CurrentUser() usuario: UsuarioActual) {
+    return this.authService.cambiarPassword(dto, usuario);
   }
 
   // Solo el ADMIN puede registrar vendedores en su negocio.

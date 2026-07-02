@@ -37,7 +37,7 @@ class EditarVentaScreen extends StatefulWidget {
 class _EditarVentaScreenState extends State<EditarVentaScreen> {
   late Cliente? _clienteSeleccionado;
   late List<_LineaCarrito> _carrito;
-  Variante? _productoSeleccionadoVariante;
+  // Variante? _productoSeleccionadoVariante;
   bool _guardando = false;
 
   // Para el selector de nuevo producto
@@ -201,7 +201,7 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
               const Text('No hay productos con variantes registrados.')
             else ...[
               DropdownButtonFormField<int>(
-                value: _productoSeleccionadoId,
+                initialValue: _productoSeleccionadoId,
                 decoration: const InputDecoration(
                   labelText: 'Agregar producto',
                   border: OutlineInputBorder(),

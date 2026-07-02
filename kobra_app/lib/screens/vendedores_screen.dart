@@ -79,7 +79,7 @@ class _VendedoresScreenState extends State<VendedoresScreen> {
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: _vendedores.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (_, i) {
                         final v = _vendedores[i];
                         return ListTile(

@@ -59,7 +59,7 @@ class VentasService {
     final response = await ApiClient.patch<Map<String, dynamic>>(
       '/ventas/$id',
       data: {
-        if (clienteId != null) 'clienteId': clienteId,
+        'clienteId': ?clienteId,
         'detalles': detalles.map((d) => d.toCreateJson()).toList(),
       },
     );
