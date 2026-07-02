@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Rol } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
+import { UpdateVentaDto } from './dto/update-venta.dto';
 import { UpdateEstadoVentaDto } from './dto/update-estado-venta.dto';
 import { FiltroVentasDto } from './dto/filtro-ventas.dto';
 import { UsuarioActual } from '../common/decorators/current-user.decorator';
@@ -91,6 +92,53 @@ export class VentasService {
     }
 
     return venta;
+  }
+
+  async actualizar(id: number, dto: UpdateVentaDto, usuario: UsuarioActual) {
+    const venta = await this.findOne(id, usuario);
+
+    const varianteIds = dto.detalles.map((d) => d.varianteId);
+    const variantes = await this.prisma.variante.findMany({
+      where: { id: { in: varianteIds }, producto: { negocioId: usuario.negocioId } },
+    });
+
+    if (variantes.length !== new Set(varianteIds).size) {
+      throw new BadRequestException('Una o más variantes no existen');
+    }
+
+    if (dto.clienteId !== undefined) {
+      const cliente = await this.prisma.cliente.findUnique({
+        where: { id: dto.clienteId, negocioId: usuario.negocioId },
+      });
+      if (!cliente) throw new BadRequestException('El cliente indicado no existe');
+    }
+
+    const variantesPorId = new Map(variantes.map((v) => [v.id, v]));
+    let total = 0;
+    const detallesData = dto.detalles.map((d) => {
+      const variante = variantesPorId.get(d.varianteId)!;
+      const subtotal = variante.precio * d.cantidad;
+      total += subtotal;
+      return {
+        varianteId: d.varianteId,
+        cantidad: d.cantidad,
+        precioUnitario: variante.precio,
+        costoUnitario: variante.costo ?? null,
+      };
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.detalleVenta.deleteMany({ where: { ventaId: venta.id } });
+      return tx.venta.update({
+        where: { id: venta.id },
+        data: {
+          total,
+          ...(dto.clienteId !== undefined && { clienteId: dto.clienteId }),
+          detalles: { create: detallesData },
+        },
+        include: INCLUDE_VENTA,
+      });
+    });
   }
 
   async actualizarEstado(id: number, dto: UpdateEstadoVentaDto, usuario: UsuarioActual) {

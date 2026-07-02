@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { VentasService } from './ventas.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
+import { UpdateVentaDto } from './dto/update-venta.dto';
 import { UpdateEstadoVentaDto } from './dto/update-estado-venta.dto';
 import { FiltroVentasDto } from './dto/filtro-ventas.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -33,6 +34,15 @@ export class VentasController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() usuario: UsuarioActual) {
     return this.ventasService.findOne(id, usuario);
+  }
+
+  @Patch(':id')
+  actualizar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateVentaDto,
+    @CurrentUser() usuario: UsuarioActual,
+  ) {
+    return this.ventasService.actualizar(id, dto, usuario);
   }
 
   @Patch(':id/estado')

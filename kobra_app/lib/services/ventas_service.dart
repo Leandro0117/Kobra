@@ -51,6 +51,21 @@ class VentasService {
     return Venta.fromJson(response.data!);
   }
 
+  Future<Venta> actualizar(
+    int id, {
+    required List<DetalleVenta> detalles,
+    int? clienteId,
+  }) async {
+    final response = await ApiClient.patch<Map<String, dynamic>>(
+      '/ventas/$id',
+      data: {
+        if (clienteId != null) 'clienteId': clienteId,
+        'detalles': detalles.map((d) => d.toCreateJson()).toList(),
+      },
+    );
+    return Venta.fromJson(response.data!);
+  }
+
   Future<void> eliminar(int id) async {
     await ApiClient.delete('/ventas/$id');
   }

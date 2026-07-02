@@ -93,6 +93,24 @@ class VentasProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
     }
   }
 
+  Future<Venta?> actualizar(
+    int id, {
+    required List<DetalleVenta> detalles,
+    int? clienteId,
+  }) async {
+    _error = null;
+    try {
+      final venta = await _service.actualizar(id, detalles: detalles, clienteId: clienteId);
+      _ventas = _ventas.map((v) => v.id == id ? venta : v).toList();
+      notifyListeners();
+      return venta;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return null;
+    }
+  }
+
   Future<bool> eliminar(int id) async {
     _error = null;
     try {

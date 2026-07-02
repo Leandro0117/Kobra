@@ -4,6 +4,7 @@ import '../models/venta.dart';
 import '../providers/ventas_provider.dart';
 import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
+import 'editar_venta_screen.dart';
 
 class DetalleVentaScreen extends StatefulWidget {
   final int ventaId;
@@ -24,6 +25,17 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
   void initState() {
     super.initState();
     _cargar();
+  }
+
+  Future<void> _irAEditar() async {
+    final venta = _venta;
+    if (venta == null) return;
+    final actualizada = await Navigator.of(context).push<Venta>(
+      MaterialPageRoute(builder: (_) => EditarVentaScreen(venta: venta)),
+    );
+    if (actualizada != null && mounted) {
+      setState(() => _venta = actualizada);
+    }
   }
 
   Future<void> _cargar() async {
@@ -103,12 +115,18 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
       appBar: AppBar(
         title: Text('Venta #${widget.ventaId}'),
         actions: [
-          if (_venta != null)
+          if (_venta != null) ...[
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Editar venta',
+              onPressed: _irAEditar,
+            ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: 'Eliminar venta',
               onPressed: _eliminarVenta,
             ),
+          ],
         ],
       ),
       body: _cargando
