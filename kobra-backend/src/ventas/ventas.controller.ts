@@ -14,6 +14,7 @@ import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { UpdateEstadoVentaDto } from './dto/update-estado-venta.dto';
 import { FiltroVentasDto } from './dto/filtro-ventas.dto';
+import { RegistrarPagoDto } from './dto/registrar-pago.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { UsuarioActual } from '../common/decorators/current-user.decorator';
 
@@ -52,6 +53,15 @@ export class VentasController {
     @CurrentUser() usuario: UsuarioActual,
   ) {
     return this.ventasService.actualizarEstado(id, dto, usuario);
+  }
+
+  @Patch(':id/pago')
+  registrarPago(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RegistrarPagoDto,
+    @CurrentUser() usuario: UsuarioActual,
+  ) {
+    return this.ventasService.registrarPago(id, dto, usuario);
   }
 
   @Delete(':id')

@@ -21,6 +21,19 @@ String _etiquetaFecha(DateTime fecha) {
   return DateFormat('d MMMM', 'es').format(fecha);
 }
 
+Color _colorEstado(EstadoVenta estado) {
+  switch (estado) {
+    case EstadoVenta.PENDIENTE:
+      return const Color(0xFFEF9F27);
+    case EstadoVenta.POR_PAGAR:
+      return const Color(0xFF378ADD);
+    case EstadoVenta.PAGADO:
+      return const Color(0xFF639922);
+    case EstadoVenta.CANCELADO:
+      return const Color(0xFF888780);
+  }
+}
+
 class VentasScreen extends StatefulWidget {
   const VentasScreen({super.key});
 
@@ -32,6 +45,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
   late final TabController _tabController;
   EstadoVenta? _filtroEstado;
   int? _filtroClienteId;
+  bool _vistaUnificada = true;
 
   @override
   void initState() {
@@ -54,6 +68,16 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
 
   List<EstadoVenta> get _estadosActuales =>
       _tabController.index == 0 ? estadosEnCurso : estadosHistorial;
+
+  List<EstadoVenta> get _estadosFiltroDisponibles =>
+      _vistaUnificada ? EstadoVenta.values : _estadosActuales;
+
+  void _toggleVista() {
+    setState(() {
+      _vistaUnificada = !_vistaUnificada;
+      _filtroEstado = null;
+    });
+  }
 
   void _aplicarFiltroCliente(int? clienteId) {
     setState(() => _filtroClienteId = clienteId);
@@ -98,9 +122,9 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
     BuildContext context,
     VentasProvider ventasProvider,
     ClientesProvider clientesProvider,
-    bool esAdmin,
-    List<EstadoVenta> estados,
-  ) {
+    bool esAdmin, {
+    List<EstadoVenta>? estados,
+  }) {
     if (ventasProvider.cargando) {
       return EstadoCargando(avisoServidorLento: ventasProvider.avisoServidorLento);
     }
@@ -112,7 +136,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
     }
 
     final ventas = ventasProvider.ventas
-        .where((v) => estados.contains(v.estado))
+        .where((v) => estados == null || estados.contains(v.estado))
         .where((v) => _filtroEstado == null || v.estado == _filtroEstado)
         .toList();
 
@@ -120,7 +144,6 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
       return const Center(child: Text('No hay ventas para mostrar aquí.'));
     }
 
-    // Construir lista plana: DateTime (cabecera) o Venta
     final items = <Object>[];
     DateTime? diaActual;
     for (final venta in ventas) {
@@ -153,36 +176,46 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
           final venta = item as Venta;
           return Column(
             children: [
-              ListTile(
-                title: Text(venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}'),
-                subtitle: Text(
-                  esAdmin
-                      ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
-                      : estadoLabel(venta.estado),
-                ),
-                trailing: SizedBox(
-                  width: 110,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          formatPrecio(venta.total),
-                          style: Theme.of(context).textTheme.titleMedium,
-                          overflow: TextOverflow.ellipsis,
+              IntrinsicHeight(
+                child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(width: 5, color: _colorEstado(venta.estado)),
+                  Expanded(
+                    child: ListTile(
+                  title: Text(venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}'),
+                  subtitle: Text(
+                    esAdmin
+                        ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
+                        : estadoLabel(venta.estado),
+                  ),
+                  trailing: SizedBox(
+                    width: 110,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            formatPrecio(venta.total),
+                            style: Theme.of(context).textTheme.titleMedium,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () => _confirmarEliminar(venta),
-                        child: const Icon(Icons.delete_outline, size: 18),
-                      ),
-                    ],
+                        // const SizedBox(width: 4),
+                        // GestureDetector(
+                        //   onTap: () => _confirmarEliminar(venta),
+                        //   child: const Icon(Icons.delete_outline, size: 18),
+                        // ),
+                      ],
+                    ),
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => DetalleVentaScreen(ventaId: venta.id)),
                   ),
                 ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => DetalleVentaScreen(ventaId: venta.id)),
+                  ),
+                ],
                 ),
               ),
               const Divider(height: 1),
@@ -203,13 +236,22 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
     return Scaffold(
       appBar: AppBar(
         title: Text(titulo),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'En curso'),
-            Tab(text: 'Historial'),
-          ],
-        ),
+        actions: [
+          IconButton(
+            icon: Icon(_vistaUnificada ? Icons.tab_outlined : Icons.view_stream),
+            tooltip: _vistaUnificada ? 'Ver por pestañas' : 'Ver todo',
+            onPressed: _toggleVista,
+          ),
+        ],
+        bottom: _vistaUnificada
+            ? null
+            : TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: 'En curso'),
+                  Tab(text: 'Historial'),
+                ],
+              ),
       ),
       body: Column(
         children: [
@@ -220,7 +262,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<EstadoVenta?>(
-                      key: ValueKey(_filtroEstado),
+                      key: ValueKey('${_vistaUnificada}_$_filtroEstado'),
                       initialValue: _filtroEstado,
                       isExpanded: true,
                       decoration: const InputDecoration(
@@ -230,7 +272,7 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
                       ),
                       items: [
                         const DropdownMenuItem(value: null, child: Text('Todos')),
-                        ..._estadosActuales.map(
+                        ..._estadosFiltroDisponibles.map(
                           (e) => DropdownMenuItem(value: e, child: Text(estadoLabel(e))),
                         ),
                       ],
@@ -263,13 +305,21 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
               ),
             ),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildLista(context, ventasProvider, clientesProvider, esAdmin, estadosEnCurso),
-                _buildLista(context, ventasProvider, clientesProvider, esAdmin, estadosHistorial),
-              ],
-            ),
+            child: _vistaUnificada
+                ? _buildLista(context, ventasProvider, clientesProvider, esAdmin)
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildLista(
+                        context, ventasProvider, clientesProvider, esAdmin,
+                        estados: estadosEnCurso,
+                      ),
+                      _buildLista(
+                        context, ventasProvider, clientesProvider, esAdmin,
+                        estados: estadosHistorial,
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),

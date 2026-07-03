@@ -11,6 +11,7 @@ import 'providers/proveedores_provider.dart';
 import 'providers/insumos_provider.dart';
 import 'providers/gastos_provider.dart';
 import 'providers/finanzas_provider.dart';
+import 'providers/medios_pago_provider.dart';
 import 'providers/negocio_provider.dart';
 import 'models/usuario.dart';
 import 'screens/login_screen.dart';
@@ -42,6 +43,7 @@ class KobraApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GastosProvider()),
         ChangeNotifierProvider(create: (_) => FinanzasProvider()),
         ChangeNotifierProvider(create: (_) => NegocioProvider()),
+        ChangeNotifierProvider(create: (_) => MediosPagoProvider()),
       ],
       child: MaterialApp(
         title: 'Kobra',

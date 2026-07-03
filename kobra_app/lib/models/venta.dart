@@ -1,7 +1,17 @@
 import 'cliente.dart';
 import 'detalle_venta.dart';
+import 'medio_pago.dart';
 
 enum EstadoVenta { PENDIENTE, POR_PAGAR, PAGADO, CANCELADO }
+
+enum TipoDescuento { PORCENTAJE, MONTO_FIJO }
+
+TipoDescuento tipoDescuentoFromString(String value) {
+  return TipoDescuento.values.firstWhere(
+    (e) => e.name == value,
+    orElse: () => TipoDescuento.PORCENTAJE,
+  );
+}
 
 EstadoVenta estadoFromString(String value) {
   return EstadoVenta.values.firstWhere(
@@ -52,6 +62,10 @@ class Venta {
   final DateTime fecha;
   final EstadoVenta estado;
   final double total;
+  final double descuento;
+  final TipoDescuento tipoDescuento;
+  final double montoPagado;
+  final MedioPago? medioPago;
   final Cliente? cliente;
   final VendedorResumen? vendedor;
   final List<DetalleVenta> detalles;
@@ -63,10 +77,17 @@ class Venta {
     required this.fecha,
     required this.estado,
     required this.total,
+    this.descuento = 0,
+    this.tipoDescuento = TipoDescuento.PORCENTAJE,
+    this.montoPagado = 0,
+    this.medioPago,
     this.cliente,
     this.vendedor,
     this.detalles = const [],
   });
+
+  double get saldoPendiente => (total - montoPagado).clamp(0, double.infinity);
+  double get porcentajePagado => total > 0 ? (montoPagado / total).clamp(0.0, 1.0) : 0;
 
   factory Venta.fromJson(Map<String, dynamic> json) {
     return Venta(
@@ -76,6 +97,12 @@ class Venta {
       fecha: DateTime.parse(json['fecha'] as String).toLocal(),
       estado: estadoFromString(json['estado'] as String),
       total: (json['total'] as num).toDouble(),
+      descuento: (json['descuento'] as num? ?? 0).toDouble(),
+      tipoDescuento: tipoDescuentoFromString(json['tipoDescuento'] as String? ?? 'PORCENTAJE'),
+      montoPagado: (json['montoPagado'] as num? ?? 0).toDouble(),
+      medioPago: json['medioPago'] != null
+          ? MedioPago.fromJson(json['medioPago'] as Map<String, dynamic>)
+          : null,
       cliente: json['cliente'] != null
           ? Cliente.fromJson(json['cliente'] as Map<String, dynamic>)
           : null,

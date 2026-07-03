@@ -31,12 +31,16 @@ class VentasService {
     required int clienteId,
     required List<DetalleVenta> detalles,
     EstadoVenta? estado,
+    double descuento = 0,
+    TipoDescuento tipoDescuento = TipoDescuento.PORCENTAJE,
   }) async {
     final response = await ApiClient.post<Map<String, dynamic>>(
       '/ventas',
       data: {
         'clienteId': clienteId,
         if (estado != null) 'estado': estado.name,
+        'descuento': descuento,
+        'tipoDescuento': tipoDescuento.name,
         'detalles': detalles.map((d) => d.toCreateJson()).toList(),
       },
     );
@@ -55,12 +59,29 @@ class VentasService {
     int id, {
     required List<DetalleVenta> detalles,
     int? clienteId,
+    double? descuento,
+    TipoDescuento? tipoDescuento,
+    int? medioPagoId,
   }) async {
     final response = await ApiClient.patch<Map<String, dynamic>>(
       '/ventas/$id',
       data: {
         'clienteId': ?clienteId,
+        'descuento': ?descuento,
+        'tipoDescuento': ?tipoDescuento?.name,
+        'medioPagoId': ?medioPagoId,
         'detalles': detalles.map((d) => d.toCreateJson()).toList(),
+      },
+    );
+    return Venta.fromJson(response.data!);
+  }
+
+  Future<Venta> registrarPago(int id, double monto, {int? medioPagoId}) async {
+    final response = await ApiClient.patch<Map<String, dynamic>>(
+      '/ventas/$id/pago',
+      data: {
+        'monto': monto,
+        'medioPagoId': ?medioPagoId,
       },
     );
     return Venta.fromJson(response.data!);

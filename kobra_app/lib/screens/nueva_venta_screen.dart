@@ -41,16 +41,36 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
   final List<_LineaCarrito> _carrito = [];
   bool _guardando = false;
 
+  TipoDescuento _tipoDescuento = TipoDescuento.PORCENTAJE;
+  final _descuentoController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _descuentoController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ClientesProvider>().cargar();
       context.read<ProductosProvider>().cargar();
     });
   }
 
-  double get _total => _carrito.fold(0, (sum, l) => sum + l.subtotal);
+  @override
+  void dispose() {
+    _descuentoController.dispose();
+    super.dispose();
+  }
+
+  double get _subtotal => _carrito.fold(0, (sum, l) => sum + l.subtotal);
+
+  double get _descuentoAplicado {
+    final valor = double.tryParse(_descuentoController.text) ?? 0;
+    if (_tipoDescuento == TipoDescuento.PORCENTAJE) {
+      return _subtotal * (valor / 100);
+    }
+    return valor;
+  }
+
+  double get _total => (_subtotal - _descuentoAplicado).clamp(0, double.infinity);
 
   void _agregarVariante(Variante variante) {
     final existente = _carrito.where((l) => l.variante.id == variante.id).firstOrNull;
@@ -88,6 +108,41 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
     }
   }
 
+  Widget _buildDescuentoWidget() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _ToggleDescuento(
+                tipo: _tipoDescuento,
+                onChanged: (t) => setState(() {
+                  _tipoDescuento = t;
+                  _descuentoController.clear();
+                }),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 110,
+              child: TextField(
+                controller: _descuentoController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: _tipoDescuento == TipoDescuento.PORCENTAJE ? 'Desc. (%)' : 'Desc. (\$)',
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   Future<void> _guardarVenta() async {
     if (_clienteSeleccionado == null) {
       ScaffoldMessenger.of(context)
@@ -115,6 +170,8 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
       clienteId: _clienteSeleccionado!.id,
       detalles: detalles,
       estado: _estadoSeleccionado,
+      descuento: double.tryParse(_descuentoController.text) ?? 0,
+      tipoDescuento: _tipoDescuento,
     );
 
     if (!mounted) return;
@@ -302,19 +359,41 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
             ),
 
             const Divider(height: 1),
+            const SizedBox(height: 8),
+            _buildDescuentoWidget(),
+            const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Total estimado', style: Theme.of(context).textTheme.titleMedium),
-                  Text(
-                    formatPrecio(_total),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  Text('Subtotal', style: Theme.of(context).textTheme.bodyMedium),
+                  Text(formatPrecio(_subtotal)),
                 ],
               ),
             ),
+            if (_descuentoAplicado > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Descuento', style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      '− ${formatPrecio(_descuentoAplicado)}',
+                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ],
+                ),
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Total', style: Theme.of(context).textTheme.titleMedium),
+                Text(formatPrecio(_total), style: Theme.of(context).textTheme.titleLarge),
+              ],
+            ),
+            const SizedBox(height: 2),
             Text(
               'El total final se recalcula en el servidor al guardar.',
               style: Theme.of(context).textTheme.bodySmall,
@@ -336,6 +415,29 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
       ),
     ),
   );
+  }
+}
+
+class _ToggleDescuento extends StatelessWidget {
+  final TipoDescuento tipo;
+  final ValueChanged<TipoDescuento> onChanged;
+
+  const _ToggleDescuento({required this.tipo, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<TipoDescuento>(
+      segments: const [
+        ButtonSegment(value: TipoDescuento.PORCENTAJE, label: Text('%')),
+        ButtonSegment(value: TipoDescuento.MONTO_FIJO, label: Text('\$')),
+      ],
+      selected: {tipo},
+      onSelectionChanged: (s) => onChanged(s.first),
+      style: const ButtonStyle(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
   }
 }
 

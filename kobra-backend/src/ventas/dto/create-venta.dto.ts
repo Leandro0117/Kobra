@@ -4,11 +4,13 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsPositive,
+  Min,
   ValidateNested,
 } from 'class-validator';
-import { EstadoVenta } from '@prisma/client';
+import { EstadoVenta, TipoDescuento } from '@prisma/client';
 
 export class DetalleVentaInputDto {
   @IsInt()
@@ -25,6 +27,15 @@ export class CreateVentaDto {
   @IsOptional()
   @IsEnum(EstadoVenta)
   estado?: EstadoVenta;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  descuento?: number;
+
+  @IsOptional()
+  @IsEnum(TipoDescuento)
+  tipoDescuento?: TipoDescuento;
 
   @IsArray()
   @ArrayMinSize(1)

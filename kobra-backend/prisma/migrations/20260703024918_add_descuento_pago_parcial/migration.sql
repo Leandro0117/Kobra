@@ -1,0 +1,7 @@
+-- CreateEnum
+CREATE TYPE "TipoDescuento" AS ENUM ('PORCENTAJE', 'MONTO_FIJO');
+
+-- AlterTable
+ALTER TABLE "Venta" ADD COLUMN     "descuento" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "montoPagado" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "tipoDescuento" "TipoDescuento" NOT NULL DEFAULT 'PORCENTAJE';

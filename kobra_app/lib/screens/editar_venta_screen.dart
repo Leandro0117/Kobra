@@ -4,7 +4,9 @@ import '../models/cliente.dart';
 import '../models/detalle_venta.dart';
 import '../models/variante.dart';
 import '../models/venta.dart';
+import '../models/medio_pago.dart';
 import '../providers/clientes_provider.dart';
+import '../providers/medios_pago_provider.dart';
 import '../providers/productos_provider.dart';
 import '../providers/ventas_provider.dart';
 import '../utils/formato.dart';
@@ -37,16 +39,23 @@ class EditarVentaScreen extends StatefulWidget {
 class _EditarVentaScreenState extends State<EditarVentaScreen> {
   late Cliente? _clienteSeleccionado;
   late List<_LineaCarrito> _carrito;
-  // Variante? _productoSeleccionadoVariante;
   bool _guardando = false;
-
-  // Para el selector de nuevo producto
   int? _productoSeleccionadoId;
+
+  late TipoDescuento _tipoDescuento;
+  late final TextEditingController _descuentoController;
+  MedioPago? _medioPagoSeleccionado;
 
   @override
   void initState() {
     super.initState();
     _clienteSeleccionado = widget.venta.cliente;
+    _tipoDescuento = widget.venta.tipoDescuento;
+    final descVal = widget.venta.descuento;
+    _descuentoController = TextEditingController(
+      text: descVal > 0 ? descVal.toStringAsFixed(descVal.truncateToDouble() == descVal ? 0 : 2) : '',
+    );
+    _descuentoController.addListener(() => setState(() {}));
     _carrito = widget.venta.detalles
         .where((d) => d.variante != null)
         .map(
@@ -61,10 +70,35 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ClientesProvider>().cargar();
       context.read<ProductosProvider>().cargar();
+      final mediosProvider = context.read<MediosPagoProvider>();
+      if (mediosProvider.medios.isEmpty) mediosProvider.cargar();
+      // Pre-seleccionar el medio de pago actual de la venta
+      if (widget.venta.medioPago != null) {
+        final medio = mediosProvider.mediosActivos
+            .where((m) => m.id == widget.venta.medioPago!.id)
+            .firstOrNull;
+        if (medio != null && mounted) setState(() => _medioPagoSeleccionado = medio);
+      }
     });
   }
 
-  double get _total => _carrito.fold(0, (sum, l) => sum + l.subtotal);
+  @override
+  void dispose() {
+    _descuentoController.dispose();
+    super.dispose();
+  }
+
+  double get _subtotal => _carrito.fold(0, (sum, l) => sum + l.subtotal);
+
+  double get _descuentoAplicado {
+    final valor = double.tryParse(_descuentoController.text) ?? 0;
+    if (_tipoDescuento == TipoDescuento.PORCENTAJE) {
+      return _subtotal * (valor / 100);
+    }
+    return valor;
+  }
+
+  double get _total => (_subtotal - _descuentoAplicado).clamp(0, double.infinity);
 
   void _agregarVariante(Variante variante, String nombreProducto) {
     final existente = _carrito.where((l) => l.variante.id == variante.id).firstOrNull;
@@ -102,6 +136,67 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
     }
   }
 
+  Widget _buildDescuentoWidget() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _ToggleDescuento(
+                tipo: _tipoDescuento,
+                onChanged: (t) => setState(() {
+                  _tipoDescuento = t;
+                  _descuentoController.clear();
+                }),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 110,
+              child: TextField(
+                controller: _descuentoController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: _tipoDescuento == TipoDescuento.PORCENTAJE ? 'Desc. (%)' : 'Desc. (\$)',
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildMedioPagoWidget(List<MedioPago> mediosActivos) {
+    if (mediosActivos.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Medio de pago', style: Theme.of(context).textTheme.labelMedium),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: mediosActivos.map((medio) {
+            final seleccionado = _medioPagoSeleccionado?.id == medio.id;
+            return ChoiceChip(
+              label: Text(medio.nombre),
+              selected: seleccionado,
+              onSelected: (_) => setState(() {
+                _medioPagoSeleccionado = seleccionado ? null : medio;
+              }),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   Future<void> _guardar() async {
     if (_clienteSeleccionado == null) {
       ScaffoldMessenger.of(context)
@@ -129,6 +224,9 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
       widget.venta.id,
       detalles: detalles,
       clienteId: _clienteSeleccionado!.id,
+      descuento: double.tryParse(_descuentoController.text) ?? 0,
+      tipoDescuento: _tipoDescuento,
+      medioPagoId: _medioPagoSeleccionado?.id,
     );
 
     if (!mounted) return;
@@ -147,6 +245,7 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
   Widget build(BuildContext context) {
     final clientesProvider = context.watch<ClientesProvider>();
     final productosProvider = context.watch<ProductosProvider>();
+    final mediosActivos = context.watch<MediosPagoProvider>().mediosActivos;
     final productosConVariantes =
         productosProvider.productos.where((p) => p.variantes.isNotEmpty).toList();
     final productoSeleccionado = _productoSeleccionadoId != null
@@ -273,19 +372,42 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
             ),
 
             const Divider(height: 1),
+            const SizedBox(height: 8),
+            _buildDescuentoWidget(),
+            _buildMedioPagoWidget(mediosActivos),
+            const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Total estimado', style: Theme.of(context).textTheme.titleMedium),
-                  Text(
-                    formatPrecio(_total),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  Text('Subtotal', style: Theme.of(context).textTheme.bodyMedium),
+                  Text(formatPrecio(_subtotal)),
                 ],
               ),
             ),
+            if (_descuentoAplicado > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Descuento', style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      '− ${formatPrecio(_descuentoAplicado)}',
+                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ],
+                ),
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Total', style: Theme.of(context).textTheme.titleMedium),
+                Text(formatPrecio(_total), style: Theme.of(context).textTheme.titleLarge),
+              ],
+            ),
+            const SizedBox(height: 2),
             Text(
               'El total final se recalcula en el servidor al guardar.',
               style: Theme.of(context).textTheme.bodySmall,
@@ -304,6 +426,29 @@ class _EditarVentaScreenState extends State<EditarVentaScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ToggleDescuento extends StatelessWidget {
+  final TipoDescuento tipo;
+  final ValueChanged<TipoDescuento> onChanged;
+
+  const _ToggleDescuento({required this.tipo, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<TipoDescuento>(
+      segments: const [
+        ButtonSegment(value: TipoDescuento.PORCENTAJE, label: Text('%')),
+        ButtonSegment(value: TipoDescuento.MONTO_FIJO, label: Text('\$')),
+      ],
+      selected: {tipo},
+      onSelectionChanged: (s) => onChanged(s.first),
+      style: const ButtonStyle(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
       ),
     );
   }

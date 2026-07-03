@@ -4,6 +4,7 @@ import '../models/usuario.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../services/api_exception.dart';
+import 'medios_pago_screen.dart';
 
 class AjustesScreen extends StatelessWidget {
   const AjustesScreen({super.key});
@@ -11,6 +12,7 @@ class AjustesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final usuario = context.read<AuthProvider>().usuario!;
+    final esAdmin = usuario.rol == Rol.ADMIN;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ajustes')),
@@ -30,7 +32,7 @@ class AjustesScreen extends StatelessWidget {
                   const Divider(height: 24),
                   _InfoRow(
                     label: 'Rol',
-                    valor: usuario.rol == Rol.ADMIN ? 'Administrador' : 'Vendedor',
+                    valor: esAdmin ? 'Administrador' : 'Vendedor',
                   ),
                 ],
               ),
@@ -49,6 +51,21 @@ class AjustesScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (esAdmin) ...[
+            const SizedBox(height: 24),
+            Text('Negocio', style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.payment_outlined),
+                title: const Text('Medios de pago'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MediosPagoScreen()),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

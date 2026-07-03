@@ -50,6 +50,8 @@ class VentasProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
     required int clienteId,
     required List<DetalleVenta> detalles,
     EstadoVenta? estado,
+    double descuento = 0,
+    TipoDescuento tipoDescuento = TipoDescuento.PORCENTAJE,
   }) async {
     _error = null;
     try {
@@ -57,6 +59,8 @@ class VentasProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
         clienteId: clienteId,
         detalles: detalles,
         estado: estado,
+        descuento: descuento,
+        tipoDescuento: tipoDescuento,
       );
       _ventas = [venta, ..._ventas];
       notifyListeners();
@@ -97,13 +101,37 @@ class VentasProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
     int id, {
     required List<DetalleVenta> detalles,
     int? clienteId,
+    double? descuento,
+    TipoDescuento? tipoDescuento,
+    int? medioPagoId,
   }) async {
     _error = null;
     try {
-      final venta = await _service.actualizar(id, detalles: detalles, clienteId: clienteId);
+      final venta = await _service.actualizar(
+        id,
+        detalles: detalles,
+        clienteId: clienteId,
+        descuento: descuento,
+        tipoDescuento: tipoDescuento,
+        medioPagoId: medioPagoId,
+      );
       _ventas = _ventas.map((v) => v.id == id ? venta : v).toList();
       notifyListeners();
       return venta;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<Venta?> registrarPago(int id, double monto, {int? medioPagoId}) async {
+    _error = null;
+    try {
+      final actualizada = await _service.registrarPago(id, monto, medioPagoId: medioPagoId);
+      _ventas = _ventas.map((v) => v.id == id ? actualizada : v).toList();
+      notifyListeners();
+      return actualizada;
     } on ApiException catch (e) {
       _error = e.mensaje;
       notifyListeners();

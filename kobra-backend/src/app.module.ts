@@ -14,6 +14,7 @@ import { GastosModule } from './gastos/gastos.module';
 import { FinanzasModule } from './finanzas/finanzas.module';
 import { NegocioModule } from './negocio/negocio.module';
 import { HealthModule } from './health/health.module';
+import { MediosPagoModule } from './medios-pago/medios-pago.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
@@ -32,6 +33,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     FinanzasModule,
     NegocioModule,
     HealthModule,
+    MediosPagoModule,
   ],
   providers: [
     {

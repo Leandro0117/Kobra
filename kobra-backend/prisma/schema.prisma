@@ -9,19 +9,30 @@ datasource db {
 }
 
 model Negocio {
-  id          Int         @id @default(autoincrement())
-  nombre      String
-  direccion   String?
-  telefono    String?
-  moneda      String
-  creadoEn    DateTime    @default(now())
-  usuarios    Usuario[]
-  clientes    Cliente[]
-  productos   Producto[]
-  proveedores Proveedor[]
-  insumos     Insumo[]
-  ventas      Venta[]
-  gastos      Gasto[]
+  id           Int          @id @default(autoincrement())
+  nombre       String
+  direccion    String?
+  telefono     String?
+  moneda       String
+  creadoEn     DateTime     @default(now())
+  usuarios     Usuario[]
+  clientes     Cliente[]
+  productos    Producto[]
+  proveedores  Proveedor[]
+  insumos      Insumo[]
+  ventas       Venta[]
+  gastos       Gasto[]
+  mediosPago   MedioPago[]
+}
+
+model MedioPago {
+  id        Int     @id @default(autoincrement())
+  negocio   Negocio @relation(fields: [negocioId], references: [id])
+  negocioId Int
+  nombre    String
+  activo    Boolean @default(true)
+  esDefault Boolean @default(false)
+  ventas    Venta[]
 }
 
 model Usuario {
@@ -72,17 +83,22 @@ model Variante {
 }
 
 model Venta {
-  id         Int            @id @default(autoincrement())
-  negocio    Negocio        @relation(fields: [negocioId], references: [id])
-  negocioId  Int
-  vendedor   Usuario        @relation(fields: [vendedorId], references: [id])
-  vendedorId Int
-  cliente    Cliente        @relation(fields: [clienteId], references: [id])
-  clienteId  Int
-  fecha      DateTime       @default(now())
-  estado     EstadoVenta    @default(PENDIENTE)
-  total      Float
-  detalles   DetalleVenta[]
+  id             Int            @id @default(autoincrement())
+  negocio        Negocio        @relation(fields: [negocioId], references: [id])
+  negocioId      Int
+  vendedor       Usuario        @relation(fields: [vendedorId], references: [id])
+  vendedorId     Int
+  cliente        Cliente        @relation(fields: [clienteId], references: [id])
+  clienteId      Int
+  fecha          DateTime       @default(now())
+  estado         EstadoVenta    @default(PENDIENTE)
+  total          Float
+  descuento      Float          @default(0)
+  tipoDescuento  TipoDescuento  @default(PORCENTAJE)
+  montoPagado    Float          @default(0)
+  medioPago      MedioPago?     @relation(fields: [medioPagoId], references: [id])
+  medioPagoId    Int?
+  detalles       DetalleVenta[]
 }
 
 enum EstadoVenta {
@@ -90,6 +106,11 @@ enum EstadoVenta {
   POR_PAGAR
   PAGADO
   CANCELADO
+}
+
+enum TipoDescuento {
+  PORCENTAJE
+  MONTO_FIJO
 }
 
 model DetalleVenta {

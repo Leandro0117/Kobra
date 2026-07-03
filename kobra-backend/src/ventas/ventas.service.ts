@@ -1,17 +1,25 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Rol } from '@prisma/client';
+import { Rol, TipoDescuento } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { UpdateEstadoVentaDto } from './dto/update-estado-venta.dto';
 import { FiltroVentasDto } from './dto/filtro-ventas.dto';
+import { RegistrarPagoDto } from './dto/registrar-pago.dto';
 import { UsuarioActual } from '../common/decorators/current-user.decorator';
 
 const INCLUDE_VENTA = {
   cliente: true,
   vendedor: { select: { id: true, nombre: true, email: true } },
   detalles: { include: { variante: { include: { producto: true } } } },
+  medioPago: { select: { id: true, nombre: true } },
 } as const;
+
+function calcularTotal(subtotal: number, descuento: number, tipo: TipoDescuento): number {
+  const descuentoAplicado =
+    tipo === TipoDescuento.PORCENTAJE ? subtotal * (descuento / 100) : descuento;
+  return Math.max(0, subtotal - descuentoAplicado);
+}
 
 @Injectable()
 export class VentasService {
@@ -34,11 +42,10 @@ export class VentasService {
 
     const variantesPorId = new Map(variantes.map((v) => [v.id, v]));
 
-    let total = 0;
+    let subtotal = 0;
     const detallesData = dto.detalles.map((d) => {
       const variante = variantesPorId.get(d.varianteId)!;
-      const subtotal = variante.precio * d.cantidad;
-      total += subtotal;
+      subtotal += variante.precio * d.cantidad;
       return {
         varianteId: d.varianteId,
         cantidad: d.cantidad,
@@ -47,6 +54,10 @@ export class VentasService {
       };
     });
 
+    const descuento = dto.descuento ?? 0;
+    const tipoDescuento = dto.tipoDescuento ?? TipoDescuento.PORCENTAJE;
+    const total = calcularTotal(subtotal, descuento, tipoDescuento);
+
     return this.prisma.venta.create({
       data: {
         negocioId: usuario.negocioId,
@@ -54,6 +65,8 @@ export class VentasService {
         clienteId: dto.clienteId,
         estado: dto.estado,
         total,
+        descuento,
+        tipoDescuento,
         detalles: { create: detallesData },
       },
       include: INCLUDE_VENTA,
@@ -114,11 +127,10 @@ export class VentasService {
     }
 
     const variantesPorId = new Map(variantes.map((v) => [v.id, v]));
-    let total = 0;
+    let subtotal = 0;
     const detallesData = dto.detalles.map((d) => {
       const variante = variantesPorId.get(d.varianteId)!;
-      const subtotal = variante.precio * d.cantidad;
-      total += subtotal;
+      subtotal += variante.precio * d.cantidad;
       return {
         varianteId: d.varianteId,
         cantidad: d.cantidad,
@@ -127,13 +139,20 @@ export class VentasService {
       };
     });
 
+    const descuento = dto.descuento ?? venta.descuento;
+    const tipoDescuento = dto.tipoDescuento ?? venta.tipoDescuento;
+    const total = calcularTotal(subtotal, descuento, tipoDescuento);
+
     return this.prisma.$transaction(async (tx) => {
       await tx.detalleVenta.deleteMany({ where: { ventaId: venta.id } });
       return tx.venta.update({
         where: { id: venta.id },
         data: {
           total,
+          descuento,
+          tipoDescuento,
           ...(dto.clienteId !== undefined && { clienteId: dto.clienteId }),
+          ...(dto.medioPagoId !== undefined && { medioPagoId: dto.medioPagoId }),
           detalles: { create: detallesData },
         },
         include: INCLUDE_VENTA,
@@ -146,6 +165,21 @@ export class VentasService {
     return this.prisma.venta.update({
       where: { id: venta.id },
       data: { estado: dto.estado },
+      include: INCLUDE_VENTA,
+    });
+  }
+
+  async registrarPago(id: number, dto: RegistrarPagoDto, usuario: UsuarioActual) {
+    const venta = await this.findOne(id, usuario);
+    const montoPagado = venta.montoPagado + dto.monto;
+    const pagoCompleto = montoPagado >= venta.total;
+    return this.prisma.venta.update({
+      where: { id: venta.id },
+      data: {
+        montoPagado,
+        ...(dto.medioPagoId !== undefined && { medioPagoId: dto.medioPagoId }),
+        ...(pagoCompleto && venta.estado === 'POR_PAGAR' && { estado: 'PAGADO' }),
+      },
       include: INCLUDE_VENTA,
     });
   }
