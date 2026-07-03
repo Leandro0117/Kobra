@@ -80,14 +80,14 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
               Expanded(
                 child: _TarjetaTotal(
                   titulo: 'Ventas totales',
-                  valor: resumen.totalVentas.toString(),
+                  valor: resumen.estadisticas.totalVentas.toString(),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _TarjetaTotal(
                   titulo: 'Total facturado',
-                  valor: formatPrecio(resumen.totalFacturado),
+                  valor: formatPrecio(resumen.estadisticas.totalFacturado),
                 ),
               ),
             ],
@@ -95,17 +95,17 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
           const SizedBox(height: 24),
           Text('Clientes con más ventas', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          if (resumen.topClientes.isEmpty)
+          if (resumen.estadisticas.topClientes.isEmpty)
             const Text('Todavía no hay datos suficientes.')
           else
-            ...resumen.topClientes.map((c) => _FilaCliente(cliente: c)),
+            ...resumen.estadisticas.topClientes.map((c) => _FilaCliente(cliente: c)),
           const SizedBox(height: 24),
           Text('Productos más vendidos', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          if (resumen.topProductos.isEmpty)
+          if (resumen.estadisticas.topProductos.isEmpty)
             const Text('Todavía no hay datos suficientes.')
           else
-            ...resumen.topProductos.map((p) => _FilaProducto(producto: p)),
+            ...resumen.estadisticas.topProductos.map((p) => _FilaProducto(producto: p)),
         ],
       ),
     );

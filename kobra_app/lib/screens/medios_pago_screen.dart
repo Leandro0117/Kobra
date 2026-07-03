@@ -129,7 +129,7 @@ class _MediosPagoScreenState extends State<MediosPagoScreen> {
                 )
               : ListView.separated(
                   itemCount: provider.medios.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final medio = provider.medios[index];
                     return ListTile(

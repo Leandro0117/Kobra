@@ -10,7 +10,6 @@ import 'providers/estadisticas_provider.dart';
 import 'providers/proveedores_provider.dart';
 import 'providers/insumos_provider.dart';
 import 'providers/gastos_provider.dart';
-import 'providers/finanzas_provider.dart';
 import 'providers/medios_pago_provider.dart';
 import 'providers/negocio_provider.dart';
 import 'models/usuario.dart';
@@ -41,7 +40,6 @@ class KobraApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProveedoresProvider()),
         ChangeNotifierProvider(create: (_) => InsumosProvider()),
         ChangeNotifierProvider(create: (_) => GastosProvider()),
-        ChangeNotifierProvider(create: (_) => FinanzasProvider()),
         ChangeNotifierProvider(create: (_) => NegocioProvider()),
         ChangeNotifierProvider(create: (_) => MediosPagoProvider()),
       ],

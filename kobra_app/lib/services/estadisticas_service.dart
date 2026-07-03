@@ -2,7 +2,7 @@ import 'api_client.dart';
 import '../models/estadisticas.dart';
 
 class EstadisticasService {
-  Future<ResumenEstadisticas> obtenerResumen(PeriodoEstadisticas periodo) async {
+  Future<ResumenCompleto> obtenerResumen(PeriodoEstadisticas periodo) async {
     final (desde, hasta) = rangoDePeriodo(periodo, DateTime.now());
     final response = await ApiClient.get<Map<String, dynamic>>(
       '/estadisticas',
@@ -11,6 +11,6 @@ class EstadisticasService {
         if (hasta != null) 'hasta': hasta.toUtc().toIso8601String(),
       },
     );
-    return ResumenEstadisticas.fromJson(response.data!);
+    return ResumenCompleto.fromJson(response.data!);
   }
 }

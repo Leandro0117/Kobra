@@ -8,12 +8,12 @@ import 'cache_mixin.dart';
 class EstadisticasProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
   final EstadisticasService _service = EstadisticasService();
 
-  ResumenEstadisticas? _resumen;
+  ResumenCompleto? _resumen;
   bool _cargando = false;
   String? _error;
   PeriodoEstadisticas _periodo = PeriodoEstadisticas.todo;
 
-  ResumenEstadisticas? get resumen => _resumen;
+  ResumenCompleto? get resumen => _resumen;
   bool get cargando => _cargando;
   String? get error => _error;
   PeriodoEstadisticas get periodo => _periodo;

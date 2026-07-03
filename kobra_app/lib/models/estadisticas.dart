@@ -1,3 +1,5 @@
+import 'finanzas.dart';
+
 /// Opciones de período para filtrar las estadísticas. El rango de fechas
 /// se calcula en el cliente (hora local del dispositivo) y se envía al
 /// backend como `desde`/`hasta`; el backend solo filtra por rango, no
@@ -124,17 +126,81 @@ class ResumenProducto {
   }
 }
 
+class ResumenVariante {
+  final int varianteId;
+  final String nombre;
+  final String producto;
+  final double cantidadVendida;
+  final double totalFacturado;
+
+  ResumenVariante({
+    required this.varianteId,
+    required this.nombre,
+    required this.producto,
+    required this.cantidadVendida,
+    required this.totalFacturado,
+  });
+
+  factory ResumenVariante.fromJson(Map<String, dynamic> json) {
+    return ResumenVariante(
+      varianteId: json['varianteId'] as int,
+      nombre: json['nombre'] as String,
+      producto: json['producto'] as String,
+      cantidadVendida: (json['cantidadVendida'] as num).toDouble(),
+      totalFacturado: (json['totalFacturado'] as num).toDouble(),
+    );
+  }
+}
+
+class PuntoVentaDia {
+  final DateTime fecha;
+  final int totalVentas;
+  final double totalFacturado;
+
+  PuntoVentaDia({
+    required this.fecha,
+    required this.totalVentas,
+    required this.totalFacturado,
+  });
+
+  factory PuntoVentaDia.fromJson(Map<String, dynamic> json) {
+    return PuntoVentaDia(
+      fecha: DateTime.parse(json['fecha'] as String),
+      totalVentas: json['totalVentas'] as int,
+      totalFacturado: (json['totalFacturado'] as num).toDouble(),
+    );
+  }
+}
+
+class ResumenCompleto {
+  final ResumenFinanzas finanzas;
+  final ResumenEstadisticas estadisticas;
+
+  ResumenCompleto({required this.finanzas, required this.estadisticas});
+
+  factory ResumenCompleto.fromJson(Map<String, dynamic> json) {
+    return ResumenCompleto(
+      finanzas: ResumenFinanzas.fromJson(json['finanzas'] as Map<String, dynamic>),
+      estadisticas: ResumenEstadisticas.fromJson(json['estadisticas'] as Map<String, dynamic>),
+    );
+  }
+}
+
 class ResumenEstadisticas {
   final int totalVentas;
   final double totalFacturado;
   final List<ResumenCliente> topClientes;
   final List<ResumenProducto> topProductos;
+  final List<ResumenVariante> topVariantes;
+  final List<PuntoVentaDia> ventasPorDia;
 
   ResumenEstadisticas({
     required this.totalVentas,
     required this.totalFacturado,
     required this.topClientes,
     required this.topProductos,
+    required this.topVariantes,
+    required this.ventasPorDia,
   });
 
   factory ResumenEstadisticas.fromJson(Map<String, dynamic> json) {
@@ -146,6 +212,12 @@ class ResumenEstadisticas {
           .toList(),
       topProductos: (json['topProductos'] as List)
           .map((p) => ResumenProducto.fromJson(p as Map<String, dynamic>))
+          .toList(),
+      topVariantes: (json['topVariantes'] as List? ?? [])
+          .map((v) => ResumenVariante.fromJson(v as Map<String, dynamic>))
+          .toList(),
+      ventasPorDia: (json['ventasPorDia'] as List? ?? [])
+          .map((d) => PuntoVentaDia.fromJson(d as Map<String, dynamic>))
           .toList(),
     );
   }
