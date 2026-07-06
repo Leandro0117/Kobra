@@ -33,6 +33,7 @@ class VentasService {
     EstadoVenta? estado,
     double descuento = 0,
     TipoDescuento tipoDescuento = TipoDescuento.PORCENTAJE,
+    int? medioPagoId,
   }) async {
     final response = await ApiClient.post<Map<String, dynamic>>(
       '/ventas',
@@ -41,6 +42,7 @@ class VentasService {
         if (estado != null) 'estado': estado.name,
         'descuento': descuento,
         'tipoDescuento': tipoDescuento.name,
+        if (medioPagoId != null) 'medioPagoId': medioPagoId,
         'detalles': detalles.map((d) => d.toCreateJson()).toList(),
       },
     );

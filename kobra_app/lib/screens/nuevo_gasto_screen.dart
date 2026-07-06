@@ -36,14 +36,25 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
   CategoriaGasto _categoriaSeleccionada = CategoriaGasto.INSUMOS;
   final List<_LineaCarritoGasto> _carrito = [];
   bool _guardando = false;
+  final _busquedaInsumoController = TextEditingController();
+  String _busquedaInsumo = '';
 
   @override
   void initState() {
     super.initState();
+    _busquedaInsumoController.addListener(
+      () => setState(() => _busquedaInsumo = _busquedaInsumoController.text),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProveedoresProvider>().cargar();
       context.read<InsumosProvider>().cargar();
     });
+  }
+
+  @override
+  void dispose() {
+    _busquedaInsumoController.dispose();
+    super.dispose();
   }
 
   double get _total => _carrito.fold(0, (sum, linea) => sum + linea.subtotal);
@@ -131,6 +142,86 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
 
   void _quitarLinea(_LineaCarritoGasto linea) {
     setState(() => _carrito.remove(linea));
+  }
+
+  Future<void> _crearInsumo(String nombreSugerido) async {
+    final nombreController = TextEditingController(text: nombreSugerido);
+    final precioController = TextEditingController();
+    UnidadInsumo? unidadSeleccionada;
+    final formKey = GlobalKey<FormState>();
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Nuevo insumo'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nombreController,
+                  decoration: const InputDecoration(labelText: 'Nombre'),
+                  autofocus: true,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<UnidadInsumo?>(
+                  value: unidadSeleccionada,
+                  decoration: const InputDecoration(labelText: 'Unidad (opcional)'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Sin unidad')),
+                    ...UnidadInsumo.values.map(
+                      (u) => DropdownMenuItem(value: u, child: Text(unidadInsumoLabel(u))),
+                    ),
+                  ],
+                  onChanged: (u) => setDialogState(() => unidadSeleccionada = u),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: precioController,
+                  decoration: const InputDecoration(labelText: 'Precio referencial (opcional)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) Navigator.of(ctx).pop(true);
+              },
+              child: const Text('Crear'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    final insumosProvider = context.read<InsumosProvider>();
+    final nombre = nombreController.text.trim();
+    final precio = double.tryParse(precioController.text.trim());
+    final ok = await insumosProvider.crear(nombre, unidadSeleccionada, precio);
+
+    if (!mounted) return;
+    if (ok) {
+      final nuevo = insumosProvider.insumos.where((i) => i.nombre == nombre).lastOrNull;
+      if (nuevo != null) {
+        _busquedaInsumoController.clear();
+        await _mostrarDialogoLinea(nuevo);
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(insumosProvider.error ?? 'No se pudo crear el insumo')),
+      );
+    }
   }
 
   Future<void> _guardarGasto() async {
@@ -224,7 +315,7 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Selector de insumos para agregar al carrito
+            // Selector de insumos con búsqueda
             if (insumosProvider.cargando)
               EstadoCargando(avisoServidorLento: insumosProvider.avisoServidorLento)
             else if (insumosProvider.error != null)
@@ -232,22 +323,62 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
                 mensaje: insumosProvider.error!,
                 onReintentar: () => insumosProvider.cargar(),
               )
-            else if (insumosProvider.insumos.isEmpty)
-              const Text('Todavía no hay insumos registrados.')
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: insumosProvider.insumos
-                    .map(
-                      (i) => ActionChip(
-                        avatar: const Icon(Icons.add, size: 18),
-                        label: Text(i.nombre),
-                        onPressed: () => _mostrarDialogoLinea(i),
-                      ),
-                    )
-                    .toList(),
+            else ...[
+              TextField(
+                controller: _busquedaInsumoController,
+                decoration: InputDecoration(
+                  hintText: 'Buscar insumo…',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _busquedaInsumo.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => _busquedaInsumoController.clear(),
+                        )
+                      : null,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
               ),
+              const SizedBox(height: 8),
+              Builder(builder: (context) {
+                final query = _busquedaInsumo.trim().toLowerCase();
+                final filtrados = query.isEmpty
+                    ? insumosProvider.insumos
+                    : insumosProvider.insumos
+                        .where((i) => i.nombre.toLowerCase().contains(query))
+                        .toList();
+
+                if (query.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                if (filtrados.isEmpty) {
+                  return Wrap(
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.add_circle_outline, size: 18),
+                        label: Text('Crear "${_busquedaInsumo.trim()}"'),
+                        onPressed: () => _crearInsumo(_busquedaInsumo.trim()),
+                      ),
+                    ],
+                  );
+                }
+
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: filtrados
+                      .map(
+                        (i) => ActionChip(
+                          avatar: const Icon(Icons.add, size: 18),
+                          label: Text(i.nombre),
+                          onPressed: () => _mostrarDialogoLinea(i),
+                        ),
+                      )
+                      .toList(),
+                );
+              }),
+            ],
             const SizedBox(height: 16),
             const Divider(),
 

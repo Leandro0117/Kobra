@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/cliente.dart';
-import '../models/usuario.dart';
-import '../providers/auth_provider.dart';
 import '../providers/clientes_provider.dart';
 import '../widgets/estado_carga.dart';
 import 'detalle_cliente_screen.dart';
@@ -32,15 +30,15 @@ class _ClientesScreenState extends State<ClientesScreen> {
     });
   }
 
-  Future<void> _mostrarFormularioCliente({Cliente? existente}) async {
-    final nombreController = TextEditingController(text: existente?.nombre ?? '');
-    final telefonoController = TextEditingController(text: existente?.telefono ?? '');
+  Future<void> _mostrarFormularioNuevoCliente() async {
+    final nombreController = TextEditingController();
+    final telefonoController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
     final guardar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(existente == null ? 'Nuevo cliente' : 'Editar cliente'),
+        title: const Text('Nuevo cliente'),
         content: Form(
           key: formKey,
           child: Column(
@@ -80,9 +78,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
       final clientesProvider = context.read<ClientesProvider>();
       final nombre = nombreController.text.trim();
       final telefono = telefonoController.text.trim();
-      final ok = existente == null
-          ? await clientesProvider.crear(nombre, telefono)
-          : await clientesProvider.actualizar(existente.id, nombre, telefono);
+      final ok = await clientesProvider.crear(nombre, telefono);
 
       if (!mounted) return;
       if (!ok) {
@@ -93,43 +89,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
     }
   }
 
-  Future<void> _confirmarEliminarCliente(Cliente cliente) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar cliente'),
-        content: Text(
-          '¿Eliminar "${cliente.nombre}"? Si tiene ventas asociadas no se podrá eliminar.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmar == true && mounted) {
-      final clientesProvider = context.read<ClientesProvider>();
-      final ok = await clientesProvider.eliminar(cliente.id);
-      if (!mounted) return;
-      if (!ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(clientesProvider.error ?? 'No se pudo eliminar el cliente')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final clientesProvider = context.watch<ClientesProvider>();
-    final esAdmin = context.watch<AuthProvider>().usuario?.rol == Rol.ADMIN;
     final filtrados = _busqueda.isEmpty
         ? clientesProvider.clientes
         : clientesProvider.clientes
@@ -139,7 +101,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Clientes')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _mostrarFormularioCliente(),
+        onPressed: _mostrarFormularioNuevoCliente,
         child: const Icon(Icons.add),
       ),
       body: Builder(
@@ -190,39 +152,28 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final cliente = filtrados[index];
-                return ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(cliente.nombre),
-                  subtitle: cliente.telefono != null ? Text(cliente.telefono!) : null,
-                  trailing: esAdmin
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: () => _mostrarFormularioCliente(existente: cliente),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => _confirmarEliminarCliente(cliente),
-                            ),
-                          ],
-                        )
-                      : null,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => DetalleClienteScreen(clienteId: cliente.id),
+                            return ListTile(
+                              leading: const Icon(Icons.person_outline),
+                              title: Text(cliente.nombre),
+                              subtitle: cliente.telefono != null ? Text(cliente.telefono!) : null,
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => DetalleClienteScreen(
+                                    clienteId: cliente.id,
+                                    cliente: cliente,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    );
-                  },
                 ),
               ),
-            ),
-          ],
-        );
-      },
-    ),
-  );
+            ],
+          );
+        },
+      ),
+    );
   }
 }

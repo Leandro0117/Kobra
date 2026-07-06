@@ -1,11 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -19,6 +23,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     rol: 'ADMIN' | 'VENDEDOR';
     negocioId: number;
   }) {
-    return { userId: payload.sub, email: payload.email, rol: payload.rol, negocioId: payload.negocioId };
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: payload.sub } });
+    if (!usuario) throw new UnauthorizedException('Sesión inválida, por favor inicia sesión nuevamente');
+    return { userId: usuario.id, email: usuario.email, rol: usuario.rol, negocioId: usuario.negocioId };
   }
 }

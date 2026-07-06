@@ -5,11 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/categoria_gasto.dart';
+import '../models/cliente.dart';
 import '../models/estadisticas.dart';
 import '../models/finanzas.dart';
 import '../providers/estadisticas_provider.dart';
 import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
+import 'detalle_cliente_screen.dart';
+import 'gastos_screen.dart';
+import 'ventas_screen.dart';
 
 const _coloresPie = [
   Color(0xFF6366F1),
@@ -102,6 +106,10 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
             const SizedBox(height: 20),
             _SeccionClientes(clientes: resumen.estadisticas.topClientes),
           ],
+          if (resumen.finanzas.mediosPago.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _SeccionMediosPago(mediosPago: resumen.finanzas.mediosPago),
+          ],
           if (resumen.finanzas.egresosPorCategoria.isNotEmpty) ...[
             const SizedBox(height: 20),
             _SeccionEgresos(categorias: resumen.finanzas.egresosPorCategoria),
@@ -168,18 +176,27 @@ class _BalanceCard extends StatelessWidget {
               label: 'Ingresos',
               valor: formatPrecio(finanzas.totalCobrado),
               color: const Color(0xFF16A34A),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const VentasScreen()),
+              ),
             ),
             const SizedBox(height: 10),
             _FilaBalance(
               label: 'Egresos',
               valor: formatPrecio(finanzas.totalEgresos),
               color: Theme.of(context).colorScheme.error,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GastosScreen()),
+              ),
             ),
             const SizedBox(height: 10),
             _FilaBalance(
               label: 'Por cobrar',
               valor: formatPrecio(finanzas.porCobrar),
               color: const Color(0xFFD97706),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const VentasScreen()),
+              ),
             ),
           ],
         ),
@@ -192,23 +209,48 @@ class _FilaBalance extends StatelessWidget {
   final String label;
   final String valor;
   final Color color;
+  final VoidCallback? onTap;
 
-  const _FilaBalance({required this.label, required this.valor, required this.color});
+  const _FilaBalance({
+    required this.label,
+    required this.valor,
+    required this.color,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        Text(
-          valor,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: color, fontWeight: FontWeight.w500),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              valor,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: color, fontWeight: FontWeight.w500),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ],
+          ],
         ),
       ],
+    );
+
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: row,
+      ),
     );
   }
 }
@@ -236,6 +278,9 @@ class _SeccionVentas extends StatelessWidget {
               child: _MetricCard(
                 label: 'Número de ventas',
                 valor: estadisticas.totalVentas.toString(),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const VentasScreen()),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -251,6 +296,9 @@ class _SeccionVentas extends StatelessWidget {
         _MetricCard(
           label: 'Total facturado',
           valor: formatPrecio(estadisticas.totalFacturado),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const VentasScreen()),
+          ),
         ),
         if (estadisticas.ventasPorDia.length >= 2) ...[
           const SizedBox(height: 10),
@@ -350,15 +398,153 @@ class _SeccionClientes extends StatelessWidget {
                     ),
                     title: Text(c.nombre),
                     subtitle: Text('${c.cantidadVentas} venta(s)'),
-                    trailing: Text(
-                      formatPrecio(c.totalComprado),
-                      style: Theme.of(context).textTheme.titleSmall,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          formatPrecio(c.totalComprado),
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right, size: 16),
+                      ],
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => DetalleClienteScreen(
+                          clienteId: c.clienteId,
+                          cliente: Cliente(id: c.clienteId, nombre: c.nombre),
+                        ),
+                      ),
                     ),
                   ),
                   if (!isLast) const Divider(height: 1, indent: 16),
                 ],
               );
             }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Sección medios de pago ────────────────────────────────────────────────────
+
+class _SeccionMediosPago extends StatelessWidget {
+  final List<ResumenMedioPago> mediosPago;
+  const _SeccionMediosPago({required this.mediosPago});
+
+  @override
+  Widget build(BuildContext context) {
+    final totalGeneral = mediosPago.fold(0.0, (s, m) => s + m.total);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Medios de pago', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height: 130,
+                  width: 130,
+                  child: PieChart(
+                    PieChartData(
+                      sections: mediosPago.asMap().entries.map((e) {
+                        return PieChartSectionData(
+                          value: e.value.total,
+                          color: _coloresPie[e.key % _coloresPie.length],
+                          radius: 38,
+                          title: '',
+                        );
+                      }).toList(),
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 32,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: mediosPago.asMap().entries.map((e) {
+                      final color = _coloresPie[e.key % _coloresPie.length];
+                      final m = e.value;
+                      final pct = totalGeneral > 0
+                          ? (m.total / totalGeneral * 100).round()
+                          : 0;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    m.nombre,
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  '$pct%',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                const SizedBox(width: 18),
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: totalGeneral > 0 ? m.total / totalGeneral : 0,
+                                      minHeight: 4,
+                                      backgroundColor:
+                                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 18),
+                              child: Text(
+                                '${formatPrecio(m.total)} · ${m.cantidadVentas} venta(s)',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -409,33 +595,48 @@ class _SeccionEgresos extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: categorias.asMap().entries.map((e) {
                       final color = _coloresPie[e.key % _coloresPie.length];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: color,
-                                shape: BoxShape.circle,
+                      final cat = e.value;
+                      return InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => GastosScreen(categoriaInicial: cat.categoria),
+                          ),
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                categoriaGastoLabel(e.value.categoria),
-                                style: Theme.of(context).textTheme.bodySmall,
-                                overflow: TextOverflow.ellipsis,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  categoriaGastoLabel(cat.categoria),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            Text(
-                              formatPrecio(e.value.total),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                            ),
-                          ],
+                              Text(
+                                formatPrecio(cat.total),
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                              ),
+                              const SizedBox(width: 2),
+                              Icon(
+                                Icons.chevron_right,
+                                size: 14,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }).toList(),
@@ -544,21 +745,38 @@ class _GraficoLinea extends StatelessWidget {
 class _MetricCard extends StatelessWidget {
   final String label;
   final String valor;
+  final VoidCallback? onTap;
 
-  const _MetricCard({required this.label, required this.valor});
+  const _MetricCard({required this.label, required this.valor, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 4),
-            Text(valor, style: Theme.of(context).textTheme.headlineSmall),
-          ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(valor, style: Theme.of(context).textTheme.headlineSmall),
+                  ),
+                  if (onTap != null)
+                    Icon(
+                      Icons.arrow_forward,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

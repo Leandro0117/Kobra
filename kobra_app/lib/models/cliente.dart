@@ -42,12 +42,20 @@ class DetalleCliente {
   final Cliente cliente;
   final int cantidadVentas;
   final double totalComprado;
+  final double ticketPromedio;
+  final double saldoPendiente;
+  final DateTime? primeraCompra;
+  final DateTime? ultimaCompra;
   final ProductoMasComprado? productoMasComprado;
 
   DetalleCliente({
     required this.cliente,
     required this.cantidadVentas,
     required this.totalComprado,
+    required this.ticketPromedio,
+    required this.saldoPendiente,
+    this.primeraCompra,
+    this.ultimaCompra,
     this.productoMasComprado,
   });
 
@@ -56,6 +64,14 @@ class DetalleCliente {
       cliente: Cliente.fromJson(json['cliente'] as Map<String, dynamic>),
       cantidadVentas: json['cantidadVentas'] as int,
       totalComprado: (json['totalComprado'] as num).toDouble(),
+      ticketPromedio: (json['ticketPromedio'] as num).toDouble(),
+      saldoPendiente: (json['saldoPendiente'] as num).toDouble(),
+      primeraCompra: json['primeraCompra'] != null
+          ? DateTime.parse(json['primeraCompra'] as String).toLocal()
+          : null,
+      ultimaCompra: json['ultimaCompra'] != null
+          ? DateTime.parse(json['ultimaCompra'] as String).toLocal()
+          : null,
       productoMasComprado: json['productoMasComprado'] != null
           ? ProductoMasComprado.fromJson(json['productoMasComprado'] as Map<String, dynamic>)
           : null,

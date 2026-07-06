@@ -8,6 +8,12 @@ export interface ResumenCategoriaGasto {
   total: number;
 }
 
+export interface ResumenMedioPago {
+  nombre: string;
+  total: number;
+  cantidadVentas: number;
+}
+
 @Injectable()
 export class FinanzasService {
   constructor(private prisma: PrismaService) {}
@@ -32,7 +38,10 @@ export class FinanzasService {
     if (rangoFecha) whereGasto.fecha = rangoFecha;
 
     const [ventasCobradas, ventasPendientes, gastos] = await Promise.all([
-      this.prisma.venta.findMany({ where: whereVentaCobrada, select: { total: true } }),
+      this.prisma.venta.findMany({
+        where: whereVentaCobrada,
+        select: { total: true, medioPago: { select: { nombre: true } } },
+      }),
       this.prisma.venta.findMany({ where: whereVentaPendiente, select: { total: true } }),
       this.prisma.gasto.findMany({ where: whereGasto, select: { total: true, categoria: true } }),
     ]);
@@ -49,12 +58,25 @@ export class FinanzasService {
       .map(([categoria, total]) => ({ categoria, total }))
       .sort((a, b) => b.total - a.total);
 
+    const porMedioPago = new Map<string, { total: number; cantidadVentas: number }>();
+    for (const venta of ventasCobradas) {
+      const nombre = venta.medioPago?.nombre ?? 'Sin especificar';
+      const entrada = porMedioPago.get(nombre) ?? { total: 0, cantidadVentas: 0 };
+      entrada.total += venta.total;
+      entrada.cantidadVentas += 1;
+      porMedioPago.set(nombre, entrada);
+    }
+    const mediosPago: ResumenMedioPago[] = [...porMedioPago.entries()]
+      .map(([nombre, datos]) => ({ nombre, ...datos }))
+      .sort((a, b) => b.total - a.total);
+
     return {
       totalCobrado,
       porCobrar,
       totalEgresos,
       balance: totalCobrado - totalEgresos,
       egresosPorCategoria,
+      mediosPago,
     };
   }
 }

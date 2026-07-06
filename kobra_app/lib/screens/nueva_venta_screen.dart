@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/cliente.dart';
+import '../models/medio_pago.dart';
 import '../models/producto.dart';
 import '../models/variante.dart';
 import '../models/detalle_venta.dart';
 import '../models/venta.dart';
 import '../providers/clientes_provider.dart';
+import '../providers/medios_pago_provider.dart';
 import '../providers/productos_provider.dart';
 import '../providers/ventas_provider.dart';
 import '../utils/formato.dart';
@@ -26,7 +28,6 @@ class _LineaCarrito {
   String get titulo => '$nombreProducto — ${variante.nombre}';
 }
 
-
 class NuevaVentaScreen extends StatefulWidget {
   const NuevaVentaScreen({super.key});
 
@@ -38,6 +39,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
   Cliente? _clienteSeleccionado;
   Producto? _productoSeleccionado;
   EstadoVenta _estadoSeleccionado = EstadoVenta.PENDIENTE;
+  MedioPago? _medioPagoSeleccionado;
   final List<_LineaCarrito> _carrito = [];
   bool _guardando = false;
 
@@ -51,6 +53,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ClientesProvider>().cargar();
       context.read<ProductosProvider>().cargar();
+      context.read<MediosPagoProvider>().cargar();
     });
   }
 
@@ -70,19 +73,24 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
     return valor;
   }
 
-  double get _total => (_subtotal - _descuentoAplicado).clamp(0, double.infinity);
+  double get _total =>
+      (_subtotal - _descuentoAplicado).clamp(0, double.infinity);
 
   void _agregarVariante(Variante variante) {
-    final existente = _carrito.where((l) => l.variante.id == variante.id).firstOrNull;
+    final existente = _carrito
+        .where((l) => l.variante.id == variante.id)
+        .firstOrNull;
     setState(() {
       if (existente != null) {
         existente.cantidad += 1;
       } else {
-        _carrito.add(_LineaCarrito(
-          variante: variante,
-          nombreProducto: _productoSeleccionado!.nombre,
-          cantidad: 1,
-        ));
+        _carrito.add(
+          _LineaCarrito(
+            variante: variante,
+            nombreProducto: _productoSeleccionado!.nombre,
+            cantidad: 1,
+          ),
+        );
       }
     });
   }
@@ -128,9 +136,13 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
               width: 110,
               child: TextField(
                 controller: _descuentoController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
-                  labelText: _tipoDescuento == TipoDescuento.PORCENTAJE ? 'Desc. (%)' : 'Desc. (\$)',
+                  labelText: _tipoDescuento == TipoDescuento.PORCENTAJE
+                      ? 'Desc. (%)'
+                      : 'Desc. (\$)',
                   isDense: true,
                   border: const OutlineInputBorder(),
                 ),
@@ -145,24 +157,28 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
 
   Future<void> _guardarVenta() async {
     if (_clienteSeleccionado == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Selecciona un cliente')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Selecciona un cliente')));
       return;
     }
     if (_carrito.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Agrega al menos un producto')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agrega al menos un producto')),
+      );
       return;
     }
 
     setState(() => _guardando = true);
 
     final detalles = _carrito
-        .map((l) => DetalleVenta(
-              varianteId: l.variante.id,
-              cantidad: l.cantidad.toDouble(),
-              precioUnitario: l.variante.precio,
-            ))
+        .map(
+          (l) => DetalleVenta(
+            varianteId: l.variante.id,
+            cantidad: l.cantidad.toDouble(),
+            precioUnitario: l.variante.precio,
+          ),
+        )
         .toList();
 
     final ventasProvider = context.read<VentasProvider>();
@@ -172,18 +188,24 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
       estado: _estadoSeleccionado,
       descuento: double.tryParse(_descuentoController.text) ?? 0,
       tipoDescuento: _tipoDescuento,
+      medioPagoId: _medioPagoSeleccionado?.id,
     );
 
     if (!mounted) return;
     setState(() => _guardando = false);
 
     if (venta != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Venta registrada correctamente')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Venta registrada correctamente')),
+      );
       Navigator.of(context).pop();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ventasProvider.error ?? 'No se pudo registrar la venta')),
+        SnackBar(
+          content: Text(
+            ventasProvider.error ?? 'No se pudo registrar la venta',
+          ),
+        ),
       );
     }
   }
@@ -193,7 +215,9 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('¿Salir sin guardar?'),
-        content: const Text('Tienes productos en el carrito. Si salís ahora se perderán.'),
+        content: const Text(
+          'Tienes productos en el carrito. Si salís ahora se perderán.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -213,8 +237,11 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
   Widget build(BuildContext context) {
     final clientesProvider = context.watch<ClientesProvider>();
     final productosProvider = context.watch<ProductosProvider>();
-    final productosConVariantes =
-        productosProvider.productos.where((p) => p.variantes.isNotEmpty).toList();
+    final productosConVariantes = productosProvider.productos
+        .where((p) => p.variantes.isNotEmpty)
+        .toList();
+
+    final mediosPagoProvider = context.watch<MediosPagoProvider>();
 
     return PopScope(
       canPop: _carrito.isEmpty,
@@ -226,195 +253,251 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
         }
       },
       child: Scaffold(
-      appBar: AppBar(title: const Text('Nueva venta')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Selector de cliente con búsqueda ──
-            if (clientesProvider.cargando)
-              EstadoCargando(avisoServidorLento: clientesProvider.avisoServidorLento)
-            else if (clientesProvider.error != null)
-              EstadoError(
-                mensaje: clientesProvider.error!,
-                onReintentar: () => clientesProvider.cargar(),
-              )
-            else
-              GestureDetector(
-                onTap: () => _seleccionarCliente(clientesProvider.clientes),
-                child: InputDecorator(
+        appBar: AppBar(title: const Text('Nueva venta')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Selector de producto ──
+              if (productosProvider.cargando)
+                EstadoCargando(
+                  avisoServidorLento: productosProvider.avisoServidorLento,
+                )
+              else if (productosProvider.error != null)
+                EstadoError(
+                  mensaje: productosProvider.error!,
+                  onReintentar: () => productosProvider.cargar(),
+                )
+              else if (productosConVariantes.isEmpty)
+                const Text('Todavía no hay variantes de producto registradas.')
+              else ...[
+                DropdownButtonFormField<Producto>(
+                  initialValue: _productoSeleccionado,
                   decoration: const InputDecoration(
-                    labelText: 'Cliente',
+                    labelText: 'Producto',
                     border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.search),
                   ),
-                  child: Text(
-                    _clienteSeleccionado?.nombre ?? 'Buscar cliente…',
-                    style: TextStyle(
-                      color: _clienteSeleccionado != null
-                          ? Theme.of(context).textTheme.bodyLarge?.color
-                          : Theme.of(context).hintColor,
-                    ),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 12),
-
-            // ── Estado inicial ──
-            DropdownButtonFormField<EstadoVenta>(
-              initialValue: _estadoSeleccionado,
-              decoration: const InputDecoration(
-                labelText: 'Estado',
-                border: OutlineInputBorder(),
-              ),
-              items: EstadoVenta.values
-                  .map((e) => DropdownMenuItem(value: e, child: Text(estadoLabel(e))))
-                  .toList(),
-              onChanged: (e) => setState(() => _estadoSeleccionado = e!),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Selector de producto ──
-            if (productosProvider.cargando)
-              EstadoCargando(avisoServidorLento: productosProvider.avisoServidorLento)
-            else if (productosProvider.error != null)
-              EstadoError(
-                mensaje: productosProvider.error!,
-                onReintentar: () => productosProvider.cargar(),
-              )
-            else if (productosConVariantes.isEmpty)
-              const Text('Todavía no hay variantes de producto registradas.')
-            else ...[
-              DropdownButtonFormField<Producto>(
-                initialValue: _productoSeleccionado,
-                decoration: const InputDecoration(
-                  labelText: 'Producto',
-                  border: OutlineInputBorder(),
-                ),
-                items: productosConVariantes
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p.nombre)))
-                    .toList(),
-                onChanged: (p) => setState(() => _productoSeleccionado = p),
-              ),
-              if (_productoSeleccionado != null) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _productoSeleccionado!.variantes
+                  items: productosConVariantes
                       .map(
-                        (v) => ActionChip(
-                          avatar: const Icon(Icons.add, size: 18),
-                          label: Text('${v.nombre}  ${formatPrecio(v.precio)}'),
-                          onPressed: () => _agregarVariante(v),
-                        ),
+                        (p) =>
+                            DropdownMenuItem(value: p, child: Text(p.nombre)),
                       )
                       .toList(),
+                  onChanged: (p) => setState(() => _productoSeleccionado = p),
+                ),
+                if (_productoSeleccionado != null) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _productoSeleccionado!.variantes
+                        .map(
+                          (v) => ActionChip(
+                            avatar: const Icon(Icons.add, size: 18),
+                            label: Text(
+                              '${v.nombre}  ${formatPrecio(v.precio)}',
+                            ),
+                            onPressed: () => _agregarVariante(v),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ],
+
+              const SizedBox(height: 12),
+              // ── Estado de venta ──
+              DropdownButtonFormField<EstadoVenta>(
+                initialValue: _estadoSeleccionado,
+                decoration: const InputDecoration(
+                  labelText: 'Estado',
+                  border: OutlineInputBorder(),
+                ),
+                items: EstadoVenta.values
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(estadoLabel(e)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (e) => setState(() {
+                  _estadoSeleccionado = e!;
+                  if (e != EstadoVenta.PAGADO) _medioPagoSeleccionado = null;
+                }),
+              ),
+              if (_estadoSeleccionado == EstadoVenta.PAGADO) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<MedioPago?>(
+                  value: _medioPagoSeleccionado,
+                  decoration: const InputDecoration(
+                    labelText: 'Medio de pago',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Sin especificar')),
+                    ...mediosPagoProvider.mediosActivos.map(
+                      (m) => DropdownMenuItem(value: m, child: Text(m.nombre)),
+                    ),
+                  ],
+                  onChanged: (m) => setState(() => _medioPagoSeleccionado = m),
                 ),
               ],
-            ],
+              const SizedBox(height: 12),
 
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-
-            // ── Carrito (ocupa el espacio restante) ──
-            Expanded(
-              child: _carrito.isEmpty
-                  ? const Center(child: Text('Agrega productos tocando los chips de arriba'))
-                  : ListView.builder(
-                      itemCount: _carrito.length,
-                      itemBuilder: (context, index) {
-                        final linea = _carrito[index];
-                        return ListTile(
-                          dense: true,
-                          title: Text(linea.titulo),
-                          subtitle: Text(
-                            '${formatPrecio(linea.variante.precio)} x ${linea.cantidad} = ${formatPrecio(linea.subtotal)}',
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle_outline),
-                                onPressed: () =>
-                                    _cambiarCantidad(linea, linea.cantidad - 1),
-                              ),
-                              Text('${linea.cantidad}'),
-                              IconButton(
-                                icon: const Icon(Icons.add_circle_outline),
-                                onPressed: () =>
-                                    _cambiarCantidad(linea, linea.cantidad + 1),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline),
-                                onPressed: () =>
-                                    setState(() => _carrito.remove(linea)),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+              // ── Selector de cliente con búsqueda ──
+              if (clientesProvider.cargando)
+                EstadoCargando(
+                  avisoServidorLento: clientesProvider.avisoServidorLento,
+                )
+              else if (clientesProvider.error != null)
+                EstadoError(
+                  mensaje: clientesProvider.error!,
+                  onReintentar: () => clientesProvider.cargar(),
+                )
+              else
+                GestureDetector(
+                  onTap: () => _seleccionarCliente(clientesProvider.clientes),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Cliente',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.search),
                     ),
-            ),
+                    child: Text(
+                      _clienteSeleccionado?.nombre ?? 'Buscar cliente…',
+                      style: TextStyle(
+                        color: _clienteSeleccionado != null
+                            ? Theme.of(context).textTheme.bodyLarge?.color
+                            : Theme.of(context).hintColor,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
 
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            _buildDescuentoWidget(),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Subtotal', style: Theme.of(context).textTheme.bodyMedium),
-                  Text(formatPrecio(_subtotal)),
-                ],
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+
+              // ── Carrito (ocupa el espacio restante) ──
+              Expanded(
+                child: _carrito.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Agrega productos tocando los chips de arriba',
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _carrito.length,
+                        itemBuilder: (context, index) {
+                          final linea = _carrito[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(linea.titulo),
+                            subtitle: Text(
+                              '${formatPrecio(linea.variante.precio)} x ${linea.cantidad} = ${formatPrecio(linea.subtotal)}',
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                  onPressed: () => _cambiarCantidad(
+                                    linea,
+                                    linea.cantidad - 1,
+                                  ),
+                                ),
+                                Text('${linea.cantidad}'),
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  onPressed: () => _cambiarCantidad(
+                                    linea,
+                                    linea.cantidad + 1,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: () =>
+                                      setState(() => _carrito.remove(linea)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ),
-            ),
-            if (_descuentoAplicado > 0)
+
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              _buildDescuentoWidget(),
+              const Divider(height: 1),
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Descuento', style: Theme.of(context).textTheme.bodyMedium),
                     Text(
-                      '− ${formatPrecio(_descuentoAplicado)}',
-                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                      'Subtotal',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    Text(formatPrecio(_subtotal)),
                   ],
                 ),
               ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Total', style: Theme.of(context).textTheme.titleMedium),
-                Text(formatPrecio(_total), style: Theme.of(context).textTheme.titleLarge),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'El total final se recalcula en el servidor al guardar.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _guardando ? null : _guardarVenta,
-              style: FilledButton.styleFrom(padding: const EdgeInsets.all(16)),
-              child: _guardando
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Guardar venta'),
-            ),
-          ],
+              if (_descuentoAplicado > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Descuento',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      Text(
+                        '− ${formatPrecio(_descuentoAplicado)}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Total', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    formatPrecio(_total),
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'El total final se recalcula en el servidor al guardar.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: _guardando ? null : _guardarVenta,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.all(16),
+                ),
+                child: _guardando
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Guardar venta'),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -470,14 +553,92 @@ class _BuscadorClientesState extends State<_BuscadorClientes> {
   void _filtrar() {
     final q = _controller.text.toLowerCase();
     setState(() {
-      _filtrados = widget.clientes
-          .where((c) => c.nombre.toLowerCase().contains(q))
-          .toList();
+      _filtrados = q.isEmpty
+          ? widget.clientes
+          : widget.clientes
+                .where((c) => c.nombre.toLowerCase().contains(q))
+                .toList();
     });
+  }
+
+  Future<void> _crearCliente(String nombreSugerido) async {
+    final nombreController = TextEditingController(text: nombreSugerido);
+    final telefonoController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nuevo cliente'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nombreController,
+                decoration: const InputDecoration(labelText: 'Nombre'),
+                autofocus: true,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              ),
+              TextFormField(
+                controller: telefonoController,
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono (opcional)',
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) Navigator.of(ctx).pop(true);
+            },
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    final clientesProvider = context.read<ClientesProvider>();
+    final nombre = nombreController.text.trim();
+    final telefono = telefonoController.text.trim();
+    final ok = await clientesProvider.crear(
+      nombre,
+      telefono.isNotEmpty ? telefono : null,
+    );
+
+    if (!mounted) return;
+    if (ok) {
+      final nuevo = clientesProvider.clientes
+          .where((c) => c.nombre == nombre)
+          .lastOrNull;
+      if (nuevo != null) Navigator.of(context).pop(nuevo);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            clientesProvider.error ?? 'No se pudo crear el cliente',
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final query = _controller.text.trim();
+    final sinResultados = _filtrados.isEmpty && query.isNotEmpty;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
@@ -504,8 +665,21 @@ class _BuscadorClientesState extends State<_BuscadorClientes> {
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: _filtrados.isEmpty
-                    ? const Center(child: Text('Sin resultados'))
+                child: sinResultados
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.person_add_outlined),
+                            ),
+                            title: Text('Crear "$query"'),
+                            subtitle: const Text('Nuevo cliente'),
+                            onTap: () => _crearCliente(query),
+                          ),
+                        ],
+                      )
                     : ListView.separated(
                         controller: scrollController,
                         itemCount: _filtrados.length,
@@ -515,7 +689,9 @@ class _BuscadorClientesState extends State<_BuscadorClientes> {
                           return ListTile(
                             leading: const Icon(Icons.person_outline),
                             title: Text(c.nombre),
-                            subtitle: c.telefono != null ? Text(c.telefono!) : null,
+                            subtitle: c.telefono != null
+                                ? Text(c.telefono!)
+                                : null,
                             onTap: () => Navigator.of(context).pop(c),
                           );
                         },

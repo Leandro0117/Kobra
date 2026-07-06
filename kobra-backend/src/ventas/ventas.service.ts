@@ -58,6 +58,8 @@ export class VentasService {
     const tipoDescuento = dto.tipoDescuento ?? TipoDescuento.PORCENTAJE;
     const total = calcularTotal(subtotal, descuento, tipoDescuento);
 
+    const esPagado = dto.estado === 'PAGADO';
+
     return this.prisma.venta.create({
       data: {
         negocioId: usuario.negocioId,
@@ -67,6 +69,8 @@ export class VentasService {
         total,
         descuento,
         tipoDescuento,
+        ...(dto.medioPagoId ? { medioPagoId: dto.medioPagoId } : {}),
+        ...(esPagado ? { montoPagado: total } : {}),
         detalles: { create: detallesData },
       },
       include: INCLUDE_VENTA,

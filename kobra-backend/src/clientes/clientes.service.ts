@@ -32,10 +32,20 @@ export class ClientesService {
 
     const ventas = await this.prisma.venta.findMany({
       where: { clienteId: id, negocioId, estado: { not: 'CANCELADO' } },
+      orderBy: { fecha: 'asc' },
       include: { detalles: { include: { variante: { include: { producto: true } } } } },
     });
 
     const totalComprado = ventas.reduce((suma, v) => suma + v.total, 0);
+    const cantidadVentas = ventas.length;
+    const ticketPromedio = cantidadVentas > 0 ? totalComprado / cantidadVentas : 0;
+
+    const saldoPendiente = ventas
+      .filter((v) => v.estado !== 'PAGADO')
+      .reduce((suma, v) => suma + Math.max(0, v.total - v.montoPagado), 0);
+
+    const primeraCompra = ventas.length > 0 ? ventas[0].fecha : null;
+    const ultimaCompra = ventas.length > 0 ? ventas[ventas.length - 1].fecha : null;
 
     const porProducto = new Map<number, { nombre: string; cantidad: number }>();
     for (const venta of ventas) {
@@ -50,15 +60,18 @@ export class ClientesService {
       }
     }
 
-    const productoMasComprado = [...porProducto.values()].sort(
-      (a, b) => b.cantidad - a.cantidad,
-    )[0];
+    const productosOrdenados = [...porProducto.values()].sort((a, b) => b.cantidad - a.cantidad);
+    const productoMasComprado = productosOrdenados[0] ?? null;
 
     return {
       cliente,
-      cantidadVentas: ventas.length,
+      cantidadVentas,
       totalComprado,
-      productoMasComprado: productoMasComprado ?? null,
+      ticketPromedio,
+      saldoPendiente,
+      primeraCompra,
+      ultimaCompra,
+      productoMasComprado,
     };
   }
 

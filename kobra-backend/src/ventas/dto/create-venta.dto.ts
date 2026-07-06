@@ -37,6 +37,10 @@ export class CreateVentaDto {
   @IsEnum(TipoDescuento)
   tipoDescuento?: TipoDescuento;
 
+  @IsOptional()
+  @IsInt()
+  medioPagoId?: number;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
