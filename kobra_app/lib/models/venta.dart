@@ -2,7 +2,7 @@ import 'cliente.dart';
 import 'detalle_venta.dart';
 import 'medio_pago.dart';
 
-enum EstadoVenta { PENDIENTE, POR_PAGAR, PAGADO, CANCELADO }
+enum EstadoVenta { PENDIENTE, POR_PAGAR, PAGO_PARCIAL, PAGADO, CANCELADO }
 
 enum TipoDescuento { PORCENTAJE, MONTO_FIJO }
 
@@ -21,7 +21,7 @@ EstadoVenta estadoFromString(String value) {
 }
 
 /// Ventas que todavía requieren acción (cobrar, entregar, etc.).
-const estadosEnCurso = [EstadoVenta.PENDIENTE, EstadoVenta.POR_PAGAR];
+const estadosEnCurso = [EstadoVenta.PENDIENTE, EstadoVenta.POR_PAGAR, EstadoVenta.PAGO_PARCIAL];
 
 /// Ventas ya cerradas, sea porque se pagaron o porque se cancelaron.
 const estadosHistorial = [EstadoVenta.PAGADO, EstadoVenta.CANCELADO];
@@ -32,6 +32,8 @@ String estadoLabel(EstadoVenta estado) {
       return 'Pendiente';
     case EstadoVenta.POR_PAGAR:
       return 'Por pagar';
+    case EstadoVenta.PAGO_PARCIAL:
+      return 'Pago parcial';
     case EstadoVenta.PAGADO:
       return 'Pagado';
     case EstadoVenta.CANCELADO:

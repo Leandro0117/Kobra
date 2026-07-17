@@ -22,9 +22,9 @@ class Variante {
   factory Variante.fromJson(Map<String, dynamic> json) {
     return Variante(
       id: json['id'] as int,
-      productoId: json['productoId'] as int,
+      productoId: (json['productoId'] as int?) ?? (json['producto']?['id'] as int? ?? 0),
       nombre: json['nombre'] as String,
-      precio: (json['precio'] as num).toDouble(),
+      precio: json['precio'] != null ? (json['precio'] as num).toDouble() : 0.0,
       costo: json['costo'] != null ? (json['costo'] as num).toDouble() : null,
       producto: json['producto'] != null
           ? Producto.fromJson(json['producto'] as Map<String, dynamic>)

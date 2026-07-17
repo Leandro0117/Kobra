@@ -1,6 +1,10 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/cliente.dart';
 import '../models/usuario.dart';
 import '../models/venta.dart';
@@ -28,6 +32,8 @@ Color _colorEstado(EstadoVenta estado) {
       return const Color(0xFFEF9F27);
     case EstadoVenta.POR_PAGAR:
       return const Color(0xFF378ADD);
+    case EstadoVenta.PAGO_PARCIAL:
+      return const Color(0xFF7B5EA7);
     case EstadoVenta.PAGADO:
       return const Color(0xFF639922);
     case EstadoVenta.CANCELADO:
@@ -46,6 +52,8 @@ class _VentasScreenState extends State<VentasScreen> {
   Set<EstadoVenta> _filtroEstados = {};
   int? _filtroClienteId;
   String? _filtroClienteNombre;
+  final _captureKey = GlobalKey();
+  bool _compartiendo = false;
 
   bool get _hayFiltros => _filtroEstados.isNotEmpty || _filtroClienteId != null;
 
@@ -88,6 +96,35 @@ class _VentasScreenState extends State<VentasScreen> {
         .cargar(filtro: FiltroVentas(clienteId: result.clienteId));
   }
 
+  Future<void> _compartirVista() async {
+    setState(() => _compartiendo = true);
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      final boundary = _captureKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
+      final uiImage = await boundary.toImage(pixelRatio: 3.0);
+      final pngData = await uiImage.toByteData(format: ui.ImageByteFormat.png);
+      if (pngData == null) return;
+
+      final decoded = img.decodePng(pngData.buffer.asUint8List());
+      if (decoded == null) return;
+      final jpegBytes = img.encodeJpg(decoded, quality: 92);
+
+      final nombre = _filtroClienteNombre?.replaceAll(' ', '_') ?? 'ventas';
+      await Share.shareXFiles([
+        XFile.fromData(
+          jpegBytes,
+          name: 'ventas_$nombre.jpg',
+          mimeType: 'image/jpeg',
+        ),
+      ]);
+    } finally {
+      if (mounted) setState(() => _compartiendo = false);
+    }
+  }
+
   Widget _buildLista(
     BuildContext context,
     VentasProvider ventasProvider,
@@ -111,6 +148,22 @@ class _VentasScreenState extends State<VentasScreen> {
       return const Center(child: Text('No hay ventas para mostrar.'));
     }
 
+    final totalPorPagar = _filtroClienteId != null
+        ? ventas
+            .where((v) => v.estado != EstadoVenta.CANCELADO)
+            .fold<double>(0, (sum, v) => sum + v.saldoPendiente)
+        : null;
+
+    // Precalcular resumen por día: { día → (cantidad, total) }
+    final resumenPorDia = <DateTime, ({int cantidad, double total})>{};
+    for (final v in ventas) {
+      final dia = DateTime(v.fecha.year, v.fecha.month, v.fecha.day);
+      final prev = resumenPorDia[dia];
+      resumenPorDia[dia] = prev == null
+          ? (cantidad: 1, total: v.total)
+          : (cantidad: prev.cantidad + 1, total: prev.total + v.total);
+    }
+
     final items = <Object>[];
     DateTime? diaActual;
     for (final venta in ventas) {
@@ -125,18 +178,38 @@ class _VentasScreenState extends State<VentasScreen> {
     return RefreshIndicator(
       onRefresh: () => ventasProvider.cargar(forzar: true),
       child: ListView.builder(
-        itemCount: items.length,
+        itemCount: items.length + (totalPorPagar != null ? 1 : 0),
         itemBuilder: (context, index) {
-          final item = items[index];
+          if (totalPorPagar != null && index == 0) {
+            return _ResumenCliente(
+              nombre: _filtroClienteNombre ?? 'Cliente',
+              totalPorPagar: totalPorPagar,
+            );
+          }
+          final realIndex = index - (totalPorPagar != null ? 1 : 0);
+          final item = items[realIndex];
           if (item is DateTime) {
+            final resumen = resumenPorDia[item]!;
+            final labelCantidad = resumen.cantidad == 1 ? '1 orden' : '${resumen.cantidad} órdenes';
             return Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
-                _etiquetaFecha(item),
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(color: Theme.of(context).colorScheme.primary),
+              child: Row(
+                children: [
+                  Text(
+                    _etiquetaFecha(item),
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelLarge
+                        ?.copyWith(color: Theme.of(context).colorScheme.primary),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$labelCantidad · ${formatPrecio(resumen.total)}',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                  ),
+                ],
               ),
             );
           }
@@ -157,10 +230,28 @@ class _VentasScreenState extends State<VentasScreen> {
                               ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
                               : estadoLabel(venta.estado),
                         ),
-                        trailing: Text(
-                          formatPrecio(venta.total),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        trailing: venta.estado == EstadoVenta.PAGO_PARCIAL
+                            ? Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    formatPrecio(venta.saldoPendiente),
+                                    style: Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                  Text(
+                                    'restante',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(color: const Color(0xFF7B5EA7)),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                formatPrecio(venta.total),
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => DetalleVentaScreen(ventaId: venta.id),
@@ -190,6 +281,21 @@ class _VentasScreenState extends State<VentasScreen> {
       appBar: AppBar(
         title: Text(titulo),
         actions: [
+          if (_filtroClienteId != null)
+            _compartiendo
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.share_outlined),
+                    tooltip: 'Compartir como imagen',
+                    onPressed: _compartirVista,
+                  ),
           Stack(
             alignment: Alignment.center,
             children: [
@@ -215,7 +321,72 @@ class _VentasScreenState extends State<VentasScreen> {
           ),
         ],
       ),
-      body: _buildLista(context, ventasProvider, esAdmin),
+      body: RepaintBoundary(
+        key: _captureKey,
+        child: _buildLista(context, ventasProvider, esAdmin),
+      ),
+    );
+  }
+}
+
+// ── Resumen por cliente ───────────────────────────────────────────────────────
+
+class _ResumenCliente extends StatelessWidget {
+  final String nombre;
+  final double totalPorPagar;
+
+  const _ResumenCliente({required this.nombre, required this.totalPorPagar});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final hayDeuda = totalPorPagar > 0;
+    final color = hayDeuda ? cs.primary : cs.secondary;
+    final colorContainer = hayDeuda ? cs.primaryContainer : cs.secondaryContainer;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Card(
+        color: colorContainer.withValues(alpha: 0.45),
+        elevation: 0,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(
+                hayDeuda ? Icons.account_balance_wallet_outlined : Icons.check_circle_outline,
+                color: color,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  nombre,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    formatPrecio(totalPorPagar),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  Text(
+                    hayDeuda ? 'por pagar' : 'al día',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: color,
+                        ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

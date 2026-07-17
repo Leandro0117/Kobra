@@ -37,6 +37,8 @@ const SELECT_VENTA = {
         select: {
           id: true,
           nombre: true,
+          precio: true,
+          costo: true,
           producto: { select: { id: true, nombre: true } },
         },
       },
@@ -223,12 +225,26 @@ export class VentasService {
     const venta = await this.findOne(id, usuario);
     const montoPagado = venta.montoPagado + dto.monto;
     const pagoCompleto = montoPagado >= venta.total;
+    // Evitar narrowing problemático comparando contra los estados NO actualizables
+    const estadoNoActualizable =
+      venta.estado === 'PENDIENTE' ||
+      venta.estado === 'PAGADO' ||
+      venta.estado === 'CANCELADO';
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nuevoEstado: any = estadoNoActualizable
+      ? undefined
+      : pagoCompleto
+        ? 'PAGADO'
+        : 'PAGO_PARCIAL';
+
     return this.prisma.venta.update({
       where: { id: venta.id },
       data: {
         montoPagado,
         medioPagoId: dto.medioPagoId,
-        ...(pagoCompleto && venta.estado === 'POR_PAGAR' && { estado: 'PAGADO', fechaPago: new Date() }),
+        ...(nuevoEstado !== undefined && { estado: nuevoEstado }),
+        ...(nuevoEstado === 'PAGADO' && { fechaPago: new Date() }),
       },
       select: SELECT_VENTA,
     });

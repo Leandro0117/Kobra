@@ -227,6 +227,7 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
         );
 
       case EstadoVenta.POR_PAGAR:
+      case EstadoVenta.PAGO_PARCIAL:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -300,6 +301,7 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
         venta.fechaEntregaProgramada != null;
 
     final mostrarPago = venta.estado == EstadoVenta.POR_PAGAR ||
+        venta.estado == EstadoVenta.PAGO_PARCIAL ||
         venta.estado == EstadoVenta.PAGADO;
 
     final nodos = <({String titulo, String? subtitulo, bool activo, Color color, IconData icono})>[];
@@ -336,17 +338,27 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
     // Nodo 3: pago
     if (mostrarPago) {
       final pagada = venta.estado == EstadoVenta.PAGADO;
+      final parcial = venta.estado == EstadoVenta.PAGO_PARCIAL;
       String? sub;
       if (venta.fechaPago != null) {
         sub = formatFechaHora(venta.fechaPago!);
-      } else if (!pagada) {
+      } else {
         sub = 'Saldo: ${formatPrecio(venta.saldoPendiente)}';
+        if (parcial) sub = '${formatPrecio(venta.montoPagado)} abonados · $sub';
       }
       nodos.add((
-        titulo: pagada ? 'Pagada' : 'Esperando pago',
+        titulo: pagada
+            ? 'Pagada'
+            : parcial
+                ? 'Pago parcial'
+                : 'Esperando pago',
         subtitulo: sub,
-        activo: pagada,
-        color: pagada ? const Color(0xFF639922) : const Color(0xFF854F0B),
+        activo: pagada || parcial,
+        color: pagada
+            ? const Color(0xFF639922)
+            : parcial
+                ? const Color(0xFF7B5EA7)
+                : const Color(0xFF854F0B),
         icono: Icons.payments_outlined,
       ));
     }
@@ -721,10 +733,11 @@ class _EstadoBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, bg) = switch (estado) {
-      EstadoVenta.PENDIENTE  => (const Color(0xFF854F0B), const Color(0xFFFAEEDA)),
-      EstadoVenta.POR_PAGAR  => (const Color(0xFF185FA5), const Color(0xFFE6F1FB)),
-      EstadoVenta.PAGADO     => (const Color(0xFF3B6D11), const Color(0xFFEAF3DE)),
-      EstadoVenta.CANCELADO  => (const Color(0xFF5F5E5A), const Color(0xFFF1EFE8)),
+      EstadoVenta.PENDIENTE    => (const Color(0xFF854F0B), const Color(0xFFFAEEDA)),
+      EstadoVenta.POR_PAGAR   => (const Color(0xFF185FA5), const Color(0xFFE6F1FB)),
+      EstadoVenta.PAGO_PARCIAL => (const Color(0xFF4D3480), const Color(0xFFEDE8F7)),
+      EstadoVenta.PAGADO       => (const Color(0xFF3B6D11), const Color(0xFFEAF3DE)),
+      EstadoVenta.CANCELADO    => (const Color(0xFF5F5E5A), const Color(0xFFF1EFE8)),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

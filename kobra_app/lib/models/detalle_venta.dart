@@ -20,7 +20,7 @@ class DetalleVenta {
   factory DetalleVenta.fromJson(Map<String, dynamic> json) {
     return DetalleVenta(
       id: json['id'] as int?,
-      varianteId: json['varianteId'] as int,
+      varianteId: (json['varianteId'] as int?) ?? (json['variante']?['id'] as int? ?? 0),
       cantidad: (json['cantidad'] as num).toDouble(),
       precioUnitario: (json['precioUnitario'] as num).toDouble(),
       costoUnitario: json['costoUnitario'] != null

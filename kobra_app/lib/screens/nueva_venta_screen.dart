@@ -468,6 +468,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: EstadoVenta.values
+                    .where((e) => e != EstadoVenta.PAGO_PARCIAL)
                     .map(
                       (e) => DropdownMenuItem(
                         value: e,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'api_client.dart';
 import '../models/venta.dart';
 import '../models/detalle_venta.dart';
@@ -37,21 +38,27 @@ class VentasService {
     DateTime? fechaVenta,
     DateTime? fechaEntregaProgramada,
   }) async {
-    final response = await ApiClient.post<Map<String, dynamic>>(
-      '/ventas',
-      data: {
-        'clienteId': clienteId,
-        if (estado != null) 'estado': estado.name,
-        'descuento': descuento,
-        'tipoDescuento': tipoDescuento.name,
-        'medioPagoId': ?medioPagoId,
-        if (fechaVenta != null) 'fechaVenta': fechaVenta.toUtc().toIso8601String(),
-        if (fechaEntregaProgramada != null)
-          'fechaEntregaProgramada': fechaEntregaProgramada.toUtc().toIso8601String(),
-        'detalles': detalles.map((d) => d.toCreateJson()).toList(),
-      },
-    );
-    return Venta.fromJson(response.data!);
+    final payload = {
+      'clienteId': clienteId,
+      if (estado != null) 'estado': estado.name,
+      'descuento': descuento,
+      'tipoDescuento': tipoDescuento.name,
+      'medioPagoId': ?medioPagoId,
+      if (fechaVenta != null) 'fechaVenta': fechaVenta.toUtc().toIso8601String(),
+      if (fechaEntregaProgramada != null)
+        'fechaEntregaProgramada': fechaEntregaProgramada.toUtc().toIso8601String(),
+      'detalles': detalles.map((d) => d.toCreateJson()).toList(),
+    };
+    debugPrint('[VentasService.crear] payload: $payload');
+    try {
+      final response = await ApiClient.post<Map<String, dynamic>>('/ventas', data: payload);
+      final venta = Venta.fromJson(response.data!);
+      debugPrint('[VentasService.crear] OK id=${venta.id} estado=${venta.estado.name} total=${venta.total}');
+      return venta;
+    } catch (e, st) {
+      debugPrint('[VentasService.crear] ERROR: $e\n$st');
+      rethrow;
+    }
   }
 
   Future<Venta> cambiarEstado(int id, EstadoVenta estado) async {

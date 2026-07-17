@@ -107,6 +107,7 @@ model Venta {
 enum EstadoVenta {
   PENDIENTE
   POR_PAGAR
+  PAGO_PARCIAL
   PAGADO
   CANCELADO
 }
