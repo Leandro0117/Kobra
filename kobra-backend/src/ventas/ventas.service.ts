@@ -8,10 +8,40 @@ import { FiltroVentasDto } from './dto/filtro-ventas.dto';
 import { RegistrarPagoDto } from './dto/registrar-pago.dto';
 import { UsuarioActual } from '../common/decorators/current-user.decorator';
 
-const INCLUDE_VENTA = {
-  cliente: true,
+const SELECT_VENTA = {
+  id: true,
+  negocioId: true,
+  fecha: true,
+  estado: true,
+  total: true,
+  descuento: true,
+  tipoDescuento: true,
+  montoPagado: true,
+  cliente: {
+    select: {
+      id: true,
+      nombre: true,
+      telefono: true,
+      notas: true,
+      creadoEn: true,
+    },
+  },
   vendedor: { select: { id: true, nombre: true, email: true } },
-  detalles: { include: { variante: { include: { producto: true } } } },
+  detalles: {
+    select: {
+      id: true,
+      cantidad: true,
+      precioUnitario: true,
+      costoUnitario: true,
+      variante: {
+        select: {
+          id: true,
+          nombre: true,
+          producto: { select: { id: true, nombre: true } },
+        },
+      },
+    },
+  },
   medioPago: { select: { id: true, nombre: true } },
 } as const;
 
@@ -25,6 +55,7 @@ function calcularTotal(subtotal: number, descuento: number, tipo: TipoDescuento)
 export class VentasService {
   constructor(private prisma: PrismaService) {}
 
+  // Crea una nueva venta con sus detalles y calcula el total
   async create(dto: CreateVentaDto, usuario: UsuarioActual) {
     const varianteIds = dto.detalles.map((d) => d.varianteId);
     const variantes = await this.prisma.variante.findMany({
@@ -73,10 +104,11 @@ export class VentasService {
         ...(esPagado ? { montoPagado: total } : {}),
         detalles: { create: detallesData },
       },
-      include: INCLUDE_VENTA,
+      select: SELECT_VENTA,
     });
   }
-
+  
+  // Obtiene todas las ventas del negocio del usuario, con filtros opcionales por vendedor, cliente y estado
   findAll(filtro: FiltroVentasDto, usuario: UsuarioActual) {
     const where: Record<string, unknown> = { negocioId: usuario.negocioId };
 
@@ -92,25 +124,26 @@ export class VentasService {
     return this.prisma.venta.findMany({
       where,
       orderBy: { fecha: 'desc' },
-      include: INCLUDE_VENTA,
+      select: SELECT_VENTA,
     });
   }
 
   async findOne(id: number, usuario: UsuarioActual) {
     const venta = await this.prisma.venta.findUnique({
       where: { id, negocioId: usuario.negocioId },
-      include: INCLUDE_VENTA,
+      select: SELECT_VENTA,
     });
 
     if (!venta) throw new NotFoundException(`Venta ${id} no encontrada`);
 
-    if (usuario.rol === Rol.VENDEDOR && venta.vendedorId !== usuario.userId) {
+    if (usuario.rol === Rol.VENDEDOR && venta.vendedor.id !== usuario.userId) {
       throw new ForbiddenException('No puedes ver ventas de otros vendedores');
     }
 
     return venta;
   }
 
+  // Actualiza una venta existente, incluyendo sus detalles y recalculando el total
   async actualizar(id: number, dto: UpdateVentaDto, usuario: UsuarioActual) {
     const venta = await this.findOne(id, usuario);
 
@@ -159,20 +192,22 @@ export class VentasService {
           ...(dto.medioPagoId !== undefined && { medioPagoId: dto.medioPagoId }),
           detalles: { create: detallesData },
         },
-        include: INCLUDE_VENTA,
+        select: SELECT_VENTA,
       });
     });
   }
 
+  // Actualiza el estado de una venta existente
   async actualizarEstado(id: number, dto: UpdateEstadoVentaDto, usuario: UsuarioActual) {
     const venta = await this.findOne(id, usuario);
     return this.prisma.venta.update({
       where: { id: venta.id },
       data: { estado: dto.estado },
-      include: INCLUDE_VENTA,
+      select: SELECT_VENTA,
     });
   }
 
+  // Registra un pago para una venta existente y actualiza el monto pagado y el estado si corresponde
   async registrarPago(id: number, dto: RegistrarPagoDto, usuario: UsuarioActual) {
     const venta = await this.findOne(id, usuario);
     const montoPagado = venta.montoPagado + dto.monto;
@@ -181,13 +216,14 @@ export class VentasService {
       where: { id: venta.id },
       data: {
         montoPagado,
-        ...(dto.medioPagoId !== undefined && { medioPagoId: dto.medioPagoId }),
+        medioPagoId: dto.medioPagoId,
         ...(pagoCompleto && venta.estado === 'POR_PAGAR' && { estado: 'PAGADO' }),
       },
-      include: INCLUDE_VENTA,
+      select: SELECT_VENTA,
     });
   }
 
+  // Elimina una venta existente y sus detalles asociados
   async remove(id: number, usuario: UsuarioActual) {
     const venta = await this.findOne(id, usuario);
     await this.prisma.$transaction([

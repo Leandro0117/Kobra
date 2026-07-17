@@ -92,8 +92,8 @@ class Venta {
   factory Venta.fromJson(Map<String, dynamic> json) {
     return Venta(
       id: json['id'] as int,
-      vendedorId: json['vendedorId'] as int,
-      clienteId: json['clienteId'] as int,
+      vendedorId: (json['vendedorId'] as int?) ?? (json['vendedor']?['id'] as int? ?? 0),
+      clienteId: (json['clienteId'] as int?) ?? (json['cliente']?['id'] as int? ?? 0),
       fecha: DateTime.parse(json['fecha'] as String).toLocal(),
       estado: estadoFromString(json['estado'] as String),
       total: (json['total'] as num).toDouble(),

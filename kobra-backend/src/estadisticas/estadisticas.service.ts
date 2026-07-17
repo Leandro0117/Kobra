@@ -67,7 +67,17 @@ export class EstadisticasService {
       }),
       this.prisma.gasto.findMany({
         where: whereGastos,
-        select: { total: true, categoria: true },
+        select: {
+          total: true,
+          categoria: true,
+          detalles: {
+            select: {
+              cantidad: true,
+              precioUnitario: true,
+              insumo: { select: { nombre: true } },
+            },
+          },
+        },
       }),
     ]);
 
@@ -160,6 +170,24 @@ export class EstadisticasService {
       .map(([categoria, total]) => ({ categoria, total }))
       .sort((a, b) => b.total - a.total);
 
+    const porCategoriaInsumo = new Map<CategoriaGasto, Map<string, number>>();
+    for (const gasto of gastos) {
+      for (const detalle of gasto.detalles) {
+        const porInsumo = porCategoriaInsumo.get(gasto.categoria) ?? new Map<string, number>();
+        const nombre = detalle.insumo.nombre;
+        porInsumo.set(nombre, (porInsumo.get(nombre) ?? 0) + detalle.cantidad * detalle.precioUnitario);
+        porCategoriaInsumo.set(gasto.categoria, porInsumo);
+      }
+    }
+    const egresosPorInsumo = Object.fromEntries(
+      [...porCategoriaInsumo.entries()].map(([cat, insumos]) => [
+        cat,
+        [...insumos.entries()]
+          .map(([nombre, total]) => ({ nombre, total }))
+          .sort((a, b) => b.total - a.total),
+      ]),
+    );
+
     return {
       finanzas: {
         totalCobrado,
@@ -167,6 +195,7 @@ export class EstadisticasService {
         totalEgresos,
         balance: totalCobrado - totalEgresos,
         egresosPorCategoria,
+        egresosPorInsumo,
       },
       estadisticas: {
         totalVentas,

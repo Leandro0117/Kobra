@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/cliente.dart';
 import '../providers/clientes_provider.dart';
 import '../widgets/estado_carga.dart';
 import 'detalle_cliente_screen.dart';

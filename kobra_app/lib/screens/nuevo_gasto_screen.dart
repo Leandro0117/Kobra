@@ -168,7 +168,7 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<UnidadInsumo?>(
-                  value: unidadSeleccionada,
+                  initialValue: unidadSeleccionada,
                   decoration: const InputDecoration(labelText: 'Unidad (opcional)'),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Sin unidad')),

@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsPositive,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { EstadoVenta, TipoDescuento } from '@prisma/client';
@@ -37,7 +38,7 @@ export class CreateVentaDto {
   @IsEnum(TipoDescuento)
   tipoDescuento?: TipoDescuento;
 
-  @IsOptional()
+  @ValidateIf((o: CreateVentaDto) => o.estado === EstadoVenta.PAGADO)
   @IsInt()
   medioPagoId?: number;
 

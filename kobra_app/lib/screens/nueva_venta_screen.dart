@@ -168,6 +168,12 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
       );
       return;
     }
+    if (_estadoSeleccionado == EstadoVenta.PAGADO && _medioPagoSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona un medio de pago')),
+      );
+      return;
+    }
 
     setState(() => _guardando = true);
 
@@ -330,17 +336,14 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
               if (_estadoSeleccionado == EstadoVenta.PAGADO) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<MedioPago?>(
-                  value: _medioPagoSeleccionado,
+                  initialValue: _medioPagoSeleccionado,
                   decoration: const InputDecoration(
                     labelText: 'Medio de pago',
                     border: OutlineInputBorder(),
                   ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Sin especificar')),
-                    ...mediosPagoProvider.mediosActivos.map(
-                      (m) => DropdownMenuItem(value: m, child: Text(m.nombre)),
-                    ),
-                  ],
+                  items: mediosPagoProvider.mediosActivos
+                    .map((m) => DropdownMenuItem(value: m, child: Text(m.nombre)))
+                    .toList(),
                   onChanged: (m) => setState(() => _medioPagoSeleccionado = m),
                 ),
               ],

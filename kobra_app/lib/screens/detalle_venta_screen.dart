@@ -498,10 +498,17 @@ class _ModalPagoState extends State<_ModalPago> {
               ),
             ),
           ),
-          if (widget.mediosActivos.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text('Medio de pago', style: Theme.of(context).textTheme.labelMedium),
-            const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          Text('Medio de pago', style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 8),
+          if (widget.mediosActivos.isEmpty)
+            Text(
+              'No hay medios de pago configurados',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+            )
+          else
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -516,17 +523,21 @@ class _ModalPagoState extends State<_ModalPago> {
                 );
               }).toList(),
             ),
-          ],
           const SizedBox(height: 20),
           FilledButton(
             onPressed: () {
               final v = double.tryParse(widget.controller.text);
-              if (v != null && v > 0) {
-                Navigator.of(context).pop((
-                  monto: v,
-                  medioPagoId: _medioPagoSeleccionado?.id,
-                ));
+              if (v == null || v <= 0) return;
+              if (widget.mediosActivos.isNotEmpty && _medioPagoSeleccionado == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Selecciona un medio de pago')),
+                );
+                return;
               }
+              Navigator.of(context).pop((
+                monto: v,
+                medioPagoId: _medioPagoSeleccionado?.id,
+              ));
             },
             child: const Text('Confirmar pago'),
           ),

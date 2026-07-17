@@ -84,39 +84,39 @@ class _VentasScreenState extends State<VentasScreen> with SingleTickerProviderSt
     context.read<VentasProvider>().cargar(filtro: FiltroVentas(clienteId: clienteId));
   }
 
-  Future<void> _confirmarEliminar(Venta venta) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar venta'),
-        content: Text(
-          '¿Eliminar la venta de "${venta.cliente?.nombre ?? 'cliente #${venta.clienteId}'}" '
-          'por ${formatPrecio(venta.total)}? Esta acción no se puede deshacer.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
-    );
+  // Future<void> _confirmarEliminar(Venta venta) async {
+  //   final confirmar = await showDialog<bool>(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: const Text('Eliminar venta'),
+  //       content: Text(
+  //         '¿Eliminar la venta de "${venta.cliente?.nombre ?? 'cliente #${venta.clienteId}'}" '
+  //         'por ${formatPrecio(venta.total)}? Esta acción no se puede deshacer.',
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.of(context).pop(false),
+  //           child: const Text('Cancelar'),
+  //         ),
+  //         FilledButton(
+  //           onPressed: () => Navigator.of(context).pop(true),
+  //           child: const Text('Eliminar'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
 
-    if (confirmar == true && mounted) {
-      final ventasProvider = context.read<VentasProvider>();
-      final ok = await ventasProvider.eliminar(venta.id);
-      if (!mounted) return;
-      if (!ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ventasProvider.error ?? 'No se pudo eliminar la venta')),
-        );
-      }
-    }
-  }
+  //   if (confirmar == true && mounted) {
+  //     final ventasProvider = context.read<VentasProvider>();
+  //     final ok = await ventasProvider.eliminar(venta.id);
+  //     if (!mounted) return;
+  //     if (!ok) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text(ventasProvider.error ?? 'No se pudo eliminar la venta')),
+  //       );
+  //     }
+  //   }
+  // }
 
   Widget _buildLista(
     BuildContext context,

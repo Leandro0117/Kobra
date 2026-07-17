@@ -1,9 +1,7 @@
 import 'dart:math' as math;
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../models/categoria_gasto.dart';
 import '../models/cliente.dart';
 import '../models/estadisticas.dart';
@@ -63,7 +61,12 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
                 isDense: true,
               ),
               items: PeriodoEstadisticas.values
-                  .map((p) => DropdownMenuItem(value: p, child: Text(periodoLabel(p))))
+                  .map(
+                    (p) => DropdownMenuItem(
+                      value: p,
+                      child: Text(periodoLabel(p)),
+                    ),
+                  )
                   .toList(),
               onChanged: (p) {
                 if (p != null) _cambiarPeriodo(p);
@@ -112,7 +115,10 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
           ],
           if (resumen.finanzas.egresosPorCategoria.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _SeccionEgresos(categorias: resumen.finanzas.egresosPorCategoria),
+            _SeccionEgresos(
+              categorias: resumen.finanzas.egresosPorCategoria,
+              egresosPorInsumo: resumen.finanzas.egresosPorInsumo,
+            ),
           ],
           const SizedBox(height: 16),
         ],
@@ -130,8 +136,9 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final esGanancia = finanzas.balance >= 0;
-    final colorBalance =
-        esGanancia ? const Color(0xFF16A34A) : Theme.of(context).colorScheme.error;
+    final colorBalance = esGanancia
+        ? const Color(0xFF16A34A)
+        : Theme.of(context).colorScheme.error;
 
     return Card(
       child: Padding(
@@ -140,24 +147,23 @@ class _BalanceCard extends StatelessWidget {
           children: [
             Text(
               'Balance',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               formatPrecio(finanzas.balance),
-              style: Theme.of(context)
-                  .textTheme
-                  .displaySmall
-                  ?.copyWith(color: colorBalance, fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: colorBalance,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               decoration: BoxDecoration(
-                color: colorBalance.withValues(alpha:0.12),
+                color: colorBalance.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(99),
               ),
               child: Text(
@@ -176,27 +182,27 @@ class _BalanceCard extends StatelessWidget {
               label: 'Ingresos',
               valor: formatPrecio(finanzas.totalCobrado),
               color: const Color(0xFF16A34A),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const VentasScreen()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const VentasScreen())),
             ),
             const SizedBox(height: 10),
             _FilaBalance(
               label: 'Egresos',
               valor: formatPrecio(finanzas.totalEgresos),
               color: Theme.of(context).colorScheme.error,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const GastosScreen()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const GastosScreen())),
             ),
             const SizedBox(height: 10),
             _FilaBalance(
               label: 'Por cobrar',
               valor: formatPrecio(finanzas.porCobrar),
               color: const Color(0xFFD97706),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const VentasScreen()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const VentasScreen())),
             ),
           ],
         ),
@@ -229,14 +235,18 @@ class _FilaBalance extends StatelessWidget {
           children: [
             Text(
               valor,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: color, fontWeight: FontWeight.w500),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             if (onTap != null) ...[
               const SizedBox(width: 4),
-              Icon(Icons.chevron_right, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ],
           ],
         ),
@@ -278,9 +288,9 @@ class _SeccionVentas extends StatelessWidget {
               child: _MetricCard(
                 label: 'Número de ventas',
                 valor: estadisticas.totalVentas.toString(),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const VentasScreen()),
-                ),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const VentasScreen())),
               ),
             ),
             const SizedBox(width: 8),
@@ -296,9 +306,9 @@ class _SeccionVentas extends StatelessWidget {
         _MetricCard(
           label: 'Total facturado',
           valor: formatPrecio(estadisticas.totalFacturado),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const VentasScreen()),
-          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const VentasScreen())),
         ),
         if (estadisticas.ventasPorDia.length >= 2) ...[
           const SizedBox(height: 10),
@@ -311,8 +321,8 @@ class _SeccionVentas extends StatelessWidget {
                   Text(
                     'Ingresos por día',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   _GraficoLinea(datos: estadisticas.ventasPorDia),
@@ -334,13 +344,18 @@ class _SeccionVariantes extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxCantidad = variantes.map((v) => v.cantidadVendida).reduce(math.max);
+    final maxCantidad = variantes
+        .map((v) => v.cantidadVendida)
+        .reduce(math.max);
     final color = Theme.of(context).colorScheme.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Variantes más vendidas', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'Variantes más vendidas',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 10),
         Card(
           child: Padding(
@@ -350,7 +365,8 @@ class _SeccionVariantes extends StatelessWidget {
                   .map(
                     (v) => _BarraRanking(
                       titulo: v.nombre,
-                      subtitulo: '${v.producto} · ${formatMonto(v.cantidadVendida)} uds',
+                      subtitulo:
+                          '${v.producto} · ${formatMonto(v.cantidadVendida)} uds',
                       valor: v.cantidadVendida,
                       maximo: maxCantidad,
                       valorTexto: formatPrecio(v.totalFacturado),
@@ -377,7 +393,10 @@ class _SeccionClientes extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Clientes con más compras', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'Clientes con más compras',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 10),
         Card(
           child: Column(
@@ -387,8 +406,10 @@ class _SeccionClientes extends StatelessWidget {
               return Column(
                 children: [
                   ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 2,
+                    ),
                     leading: CircleAvatar(
                       radius: 18,
                       child: Text(
@@ -497,15 +518,16 @@ class _SeccionMediosPago extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     m.nombre,
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 Text(
                                   '$pct%',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -517,11 +539,16 @@ class _SeccionMediosPago extends StatelessWidget {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(4),
                                     child: LinearProgressIndicator(
-                                      value: totalGeneral > 0 ? m.total / totalGeneral : 0,
+                                      value: totalGeneral > 0
+                                          ? m.total / totalGeneral
+                                          : 0,
                                       minHeight: 4,
-                                      backgroundColor:
-                                          Theme.of(context).colorScheme.surfaceContainerHighest,
-                                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        color,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -532,8 +559,11 @@ class _SeccionMediosPago extends StatelessWidget {
                               padding: const EdgeInsets.only(left: 18),
                               child: Text(
                                 '${formatPrecio(m.total)} · ${m.cantidadVentas} venta(s)',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                     ),
                               ),
                             ),
@@ -554,98 +584,231 @@ class _SeccionMediosPago extends StatelessWidget {
 
 // ── Sección egresos por categoría ─────────────────────────────────────────────
 
-class _SeccionEgresos extends StatelessWidget {
+class _SeccionEgresos extends StatefulWidget {
   final List<ResumenCategoriaGasto> categorias;
-  const _SeccionEgresos({required this.categorias});
+  final Map<CategoriaGasto, List<ResumenInsumoGasto>> egresosPorInsumo;
+
+  const _SeccionEgresos({
+    required this.categorias,
+    required this.egresosPorInsumo,
+  });
+
+  @override
+  State<_SeccionEgresos> createState() => _SeccionEgresosState();
+}
+
+class _SeccionEgresosState extends State<_SeccionEgresos> {
+  CategoriaGasto? _categoriaSeleccionada;
+
+  @override
+  void didUpdateWidget(_SeccionEgresos old) {
+    super.didUpdateWidget(old);
+    if (old.categorias != widget.categorias) {
+      _categoriaSeleccionada = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Egresos por categoría', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'Egresos por categoría',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<CategoriaGasto?>(
+          initialValue: _categoriaSeleccionada,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          items: [
+            const DropdownMenuItem(
+              value: null,
+              child: Text('Todas las categorías'),
+            ),
+            ...widget.categorias.map(
+              (c) => DropdownMenuItem(
+                value: c.categoria,
+                child: Text(categoriaGastoLabel(c.categoria)),
+              ),
+            ),
+          ],
+          onChanged: (v) => setState(() => _categoriaSeleccionada = v),
+        ),
         const SizedBox(height: 10),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  height: 130,
-                  width: 130,
-                  child: PieChart(
-                    PieChartData(
-                      sections: categorias.asMap().entries.map((e) {
-                        return PieChartSectionData(
-                          value: e.value.total,
-                          color: _coloresPie[e.key % _coloresPie.length],
-                          radius: 38,
-                          title: '',
-                        );
-                      }).toList(),
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 32,
+            child: _categoriaSeleccionada == null
+                ? _buildDonutCategorias()
+                : _buildDonutInsumos(
+                    widget.egresosPorInsumo[_categoriaSeleccionada] ?? [],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDonutCategorias() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _Donut(
+          secciones: widget.categorias
+              .asMap()
+              .entries
+              .map((e) => (valor: e.value.total, indice: e.key))
+              .toList(),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: widget.categorias.asMap().entries.map((e) {
+              final color = _coloresPie[e.key % _coloresPie.length];
+              final cat = e.value;
+              return InkWell(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        GastosScreen(categoriaInicial: cat.categoria),
+                  ),
+                ),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _FilaLeyenda(
+                    color: color,
+                    label: categoriaGastoLabel(cat.categoria),
+                    total: cat.total,
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: categorias.asMap().entries.map((e) {
-                      final color = _coloresPie[e.key % _coloresPie.length];
-                      final cat = e.value;
-                      return InkWell(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => GastosScreen(categoriaInicial: cat.categoria),
-                          ),
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  categoriaGastoLabel(cat.categoria),
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                formatPrecio(cat.total),
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                              const SizedBox(width: 2),
-                              Icon(
-                                Icons.chevron_right,
-                                size: 14,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
+              );
+            }).toList(),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildDonutInsumos(List<ResumenInsumoGasto> insumos) {
+    if (insumos.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Text('Sin detalle de insumos para esta categoría'),
+        ),
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _Donut(
+          secciones: insumos
+              .asMap()
+              .entries
+              .map((e) => (valor: e.value.total, indice: e.key))
+              .toList(),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: insumos.asMap().entries.map((e) {
+              final color = _coloresPie[e.key % _coloresPie.length];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _FilaLeyenda(
+                  color: color,
+                  label: e.value.nombre,
+                  total: e.value.total,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Donut extends StatelessWidget {
+  final List<({double valor, int indice})> secciones;
+  const _Donut({required this.secciones});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 130,
+      width: 130,
+      child: PieChart(
+        PieChartData(
+          sections: secciones
+              .map(
+                (s) => PieChartSectionData(
+                  value: s.valor,
+                  color: _coloresPie[s.indice % _coloresPie.length],
+                  radius: 38,
+                  title: '',
+                ),
+              )
+              .toList(),
+          sectionsSpace: 2,
+          centerSpaceRadius: 32,
+        ),
+      ),
+    );
+  }
+}
+
+class _FilaLeyenda extends StatelessWidget {
+  final Color color;
+  final String label;
+  final double total;
+  final Widget? trailing;
+
+  const _FilaLeyenda({
+    required this.color,
+    required this.label,
+    required this.total,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Text(
+          formatPrecio(total),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+        ),
+        if (trailing != null) ...[const SizedBox(width: 2), trailing!],
       ],
     );
   }
@@ -692,9 +855,15 @@ class _GraficoLinea extends StatelessWidget {
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -730,7 +899,7 @@ class _GraficoLinea extends StatelessWidget {
               dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: color.withValues(alpha:0.08),
+                color: color.withValues(alpha: 0.08),
               ),
             ),
           ],
@@ -765,7 +934,10 @@ class _MetricCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(valor, style: Theme.of(context).textTheme.headlineSmall),
+                    child: Text(
+                      valor,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
                   if (onTap != null)
                     Icon(
@@ -826,7 +998,9 @@ class _BarraRanking extends StatelessWidget {
             child: LinearProgressIndicator(
               value: maximo > 0 ? valor / maximo : 0,
               minHeight: 6,
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
@@ -834,8 +1008,8 @@ class _BarraRanking extends StatelessWidget {
           Text(
             subtitulo,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

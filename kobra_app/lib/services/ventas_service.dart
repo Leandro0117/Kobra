@@ -42,7 +42,7 @@ class VentasService {
         if (estado != null) 'estado': estado.name,
         'descuento': descuento,
         'tipoDescuento': tipoDescuento.name,
-        if (medioPagoId != null) 'medioPagoId': medioPagoId,
+        'medioPagoId': ?medioPagoId,
         'detalles': detalles.map((d) => d.toCreateJson()).toList(),
       },
     );
