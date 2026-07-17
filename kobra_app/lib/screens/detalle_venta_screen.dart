@@ -293,6 +293,91 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
     }
   }
 
+  Widget _buildTimeline(Venta venta) {
+    final mostrarEntrega = venta.estado == EstadoVenta.POR_PAGAR ||
+        venta.estado == EstadoVenta.PAGADO ||
+        venta.fechaEntrega != null ||
+        venta.fechaEntregaProgramada != null;
+
+    final mostrarPago = venta.estado == EstadoVenta.POR_PAGAR ||
+        venta.estado == EstadoVenta.PAGADO;
+
+    final nodos = <({String titulo, String? subtitulo, bool activo, Color color, IconData icono})>[];
+
+    // Nodo 1: venta realizada
+    nodos.add((
+      titulo: 'Venta realizada',
+      subtitulo: formatFechaHora(venta.fecha),
+      activo: true,
+      color: const Color(0xFF639922),
+      icono: Icons.shopping_bag_outlined,
+    ));
+
+    // Nodo 2: entrega
+    if (mostrarEntrega) {
+      String? sub;
+      if (venta.fechaEntrega != null) {
+        sub = formatFechaHora(venta.fechaEntrega!);
+        if (venta.fechaEntregaProgramada != null) {
+          sub = '$sub\nProgramada: ${formatFecha(venta.fechaEntregaProgramada!)}';
+        }
+      } else if (venta.fechaEntregaProgramada != null) {
+        sub = 'Programada: ${formatFecha(venta.fechaEntregaProgramada!)}';
+      }
+      nodos.add((
+        titulo: venta.fechaEntrega != null ? 'Entregada' : 'Pendiente de entrega',
+        subtitulo: sub,
+        activo: venta.fechaEntrega != null,
+        color: const Color(0xFF378ADD),
+        icono: Icons.local_shipping_outlined,
+      ));
+    }
+
+    // Nodo 3: pago
+    if (mostrarPago) {
+      final pagada = venta.estado == EstadoVenta.PAGADO;
+      String? sub;
+      if (venta.fechaPago != null) {
+        sub = formatFechaHora(venta.fechaPago!);
+      } else if (!pagada) {
+        sub = 'Saldo: ${formatPrecio(venta.saldoPendiente)}';
+      }
+      nodos.add((
+        titulo: pagada ? 'Pagada' : 'Esperando pago',
+        subtitulo: sub,
+        activo: pagada,
+        color: pagada ? const Color(0xFF639922) : const Color(0xFF854F0B),
+        icono: Icons.payments_outlined,
+      ));
+    }
+
+    // Nodo cancelada
+    if (venta.estado == EstadoVenta.CANCELADO) {
+      nodos.add((
+        titulo: 'Cancelada',
+        subtitulo: null,
+        activo: true,
+        color: const Color(0xFF888780),
+        icono: Icons.cancel_outlined,
+      ));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < nodos.length; i++)
+          _FilaTimeline(
+            titulo: nodos[i].titulo,
+            subtitulo: nodos[i].subtitulo,
+            activo: nodos[i].activo,
+            color: nodos[i].color,
+            icono: nodos[i].icono,
+            esUltimo: i == nodos.length - 1,
+          ),
+      ],
+    );
+  }
+
   Widget _buildResumenFinanciero(Venta venta) {
     final subtotal = venta.detalles.fold<double>(0, (s, d) => s + d.subtotal);
     final tieneDescuento = venta.descuento > 0;
@@ -413,13 +498,9 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
         const SizedBox(height: 12),
         Text('Vendedor', style: Theme.of(context).textTheme.labelMedium),
         Text(venta.vendedor?.nombre ?? '-', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        Text('Fecha', style: Theme.of(context).textTheme.labelMedium),
-        Text(
-          formatFechaHora(venta.fecha),
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
         const SizedBox(height: 16),
+        _buildTimeline(venta),
+        const SizedBox(height: 4),
         const Divider(),
         Text('Productos', style: Theme.of(context).textTheme.labelMedium),
         const SizedBox(height: 8),
@@ -540,6 +621,90 @@ class _ModalPagoState extends State<_ModalPago> {
               ));
             },
             child: const Text('Confirmar pago'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Fila de timeline ─────────────────────────────────────────────────────────
+
+class _FilaTimeline extends StatelessWidget {
+  final String titulo;
+  final String? subtitulo;
+  final bool activo;
+  final Color color;
+  final IconData icono;
+  final bool esUltimo;
+
+  const _FilaTimeline({
+    required this.titulo,
+    required this.activo,
+    required this.color,
+    required this.icono,
+    required this.esUltimo,
+    this.subtitulo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dotColor = activo ? color : Theme.of(context).colorScheme.outlineVariant;
+    final lineColor = Theme.of(context).colorScheme.outlineVariant;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 32,
+            child: Column(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: activo ? color.withValues(alpha: 0.12) : Colors.transparent,
+                    border: Border.all(color: dotColor, width: 2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icono, size: 14, color: dotColor),
+                ),
+                if (!esUltimo)
+                  Expanded(
+                    child: Center(
+                      child: Container(width: 2, color: lineColor),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: esUltimo ? 0 : 16, top: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: activo ? color : null,
+                        ),
+                  ),
+                  if (subtitulo != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitulo!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ],
       ),

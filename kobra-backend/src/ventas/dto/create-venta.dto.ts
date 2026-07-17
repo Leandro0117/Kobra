@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsEnum,
   IsInt,
   IsNumber,
@@ -41,6 +42,14 @@ export class CreateVentaDto {
   @ValidateIf((o: CreateVentaDto) => o.estado === EstadoVenta.PAGADO)
   @IsInt()
   medioPagoId?: number;
+
+  @IsOptional()
+  @IsDateString()
+  fechaVenta?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fechaEntregaProgramada?: string;
 
   @IsArray()
   @ArrayMinSize(1)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/cliente.dart';
 import '../models/medio_pago.dart';
@@ -46,6 +47,10 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
   TipoDescuento _tipoDescuento = TipoDescuento.PORCENTAJE;
   final _descuentoController = TextEditingController();
 
+  DateTime _fechaVenta = DateTime.now();
+  DateTime? _fechaEntregaProgramada;
+  bool _fechasExpandidas = false;
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +66,141 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
   void dispose() {
     _descuentoController.dispose();
     super.dispose();
+  }
+
+  bool get _fechasModificadas {
+    final hoy = DateTime.now();
+    final mismoDia = _fechaVenta.year == hoy.year &&
+        _fechaVenta.month == hoy.month &&
+        _fechaVenta.day == hoy.day;
+    return !mismoDia || _fechaEntregaProgramada != null;
+  }
+
+  Future<void> _seleccionarFechaVenta() async {
+    final fecha = await showDatePicker(
+      context: context,
+      initialDate: _fechaVenta,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (fecha == null || !mounted) return;
+    final hora = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_fechaVenta),
+    );
+    if (!mounted) return;
+    setState(() {
+      _fechaVenta = DateTime(
+        fecha.year, fecha.month, fecha.day,
+        hora?.hour ?? _fechaVenta.hour,
+        hora?.minute ?? _fechaVenta.minute,
+      );
+    });
+  }
+
+  Future<void> _seleccionarFechaEntregaProgramada() async {
+    final fecha = await showDatePicker(
+      context: context,
+      initialDate: _fechaEntregaProgramada ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (!mounted) return;
+    setState(() => _fechaEntregaProgramada = fecha);
+  }
+
+  Widget _buildFechasSection() {
+    final fmt = DateFormat('dd/MM/yyyy HH:mm', 'es');
+    final fmtFecha = DateFormat('dd/MM/yyyy', 'es');
+    final colorScheme = Theme.of(context).colorScheme;
+    final modificadas = _fechasModificadas;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _fechasExpandidas = !_fechasExpandidas),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 18,
+                  color: modificadas ? Colors.amber.shade700 : colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Fechas opcionales',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: modificadas ? Colors.amber.shade700 : null,
+                    fontWeight: modificadas ? FontWeight.w600 : null,
+                  ),
+                ),
+                if (modificadas) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      'Modificadas',
+                      style: TextStyle(fontSize: 11, color: Colors.amber.shade800),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                Icon(
+                  _fechasExpandidas ? Icons.expand_less : Icons.expand_more,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_fechasExpandidas) ...[
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.event_outlined),
+            title: const Text('Fecha de la venta'),
+            subtitle: Text(fmt.format(_fechaVenta)),
+            trailing: TextButton(
+              onPressed: _seleccionarFechaVenta,
+              child: const Text('Cambiar'),
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.local_shipping_outlined),
+            title: const Text('Entrega programada'),
+            subtitle: Text(
+              _fechaEntregaProgramada != null
+                  ? fmtFecha.format(_fechaEntregaProgramada!)
+                  : 'Sin fecha',
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton(
+                  onPressed: _seleccionarFechaEntregaProgramada,
+                  child: const Text('Elegir'),
+                ),
+                if (_fechaEntregaProgramada != null)
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () => setState(() => _fechaEntregaProgramada = null),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+      ],
+    );
   }
 
   double get _subtotal => _carrito.fold(0, (sum, l) => sum + l.subtotal);
@@ -188,6 +328,11 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
         .toList();
 
     final ventasProvider = context.read<VentasProvider>();
+    final hoy = DateTime.now();
+    final fechaEsHoy = _fechaVenta.year == hoy.year &&
+        _fechaVenta.month == hoy.month &&
+        _fechaVenta.day == hoy.day;
+
     final venta = await ventasProvider.crear(
       clienteId: _clienteSeleccionado!.id,
       detalles: detalles,
@@ -195,6 +340,8 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
       descuento: double.tryParse(_descuentoController.text) ?? 0,
       tipoDescuento: _tipoDescuento,
       medioPagoId: _medioPagoSeleccionado?.id,
+      fechaVenta: fechaEsHoy ? null : _fechaVenta,
+      fechaEntregaProgramada: _fechaEntregaProgramada,
     );
 
     if (!mounted) return;
@@ -379,8 +526,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
                   ),
                 ),
               const SizedBox(height: 12),
-
-              const SizedBox(height: 12),
+              _buildFechasSection(),
               const Divider(height: 1),
 
               // ── Carrito (ocupa el espacio restante) ──

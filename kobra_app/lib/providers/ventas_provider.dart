@@ -53,6 +53,8 @@ class VentasProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
     double descuento = 0,
     TipoDescuento tipoDescuento = TipoDescuento.PORCENTAJE,
     int? medioPagoId,
+    DateTime? fechaVenta,
+    DateTime? fechaEntregaProgramada,
   }) async {
     _error = null;
     try {
@@ -63,6 +65,8 @@ class VentasProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
         descuento: descuento,
         tipoDescuento: tipoDescuento,
         medioPagoId: medioPagoId,
+        fechaVenta: fechaVenta,
+        fechaEntregaProgramada: fechaEntregaProgramada,
       );
       _ventas = [venta, ..._ventas];
       notifyListeners();

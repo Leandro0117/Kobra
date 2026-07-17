@@ -34,6 +34,8 @@ class VentasService {
     double descuento = 0,
     TipoDescuento tipoDescuento = TipoDescuento.PORCENTAJE,
     int? medioPagoId,
+    DateTime? fechaVenta,
+    DateTime? fechaEntregaProgramada,
   }) async {
     final response = await ApiClient.post<Map<String, dynamic>>(
       '/ventas',
@@ -43,6 +45,9 @@ class VentasService {
         'descuento': descuento,
         'tipoDescuento': tipoDescuento.name,
         'medioPagoId': ?medioPagoId,
+        if (fechaVenta != null) 'fechaVenta': fechaVenta.toUtc().toIso8601String(),
+        if (fechaEntregaProgramada != null)
+          'fechaEntregaProgramada': fechaEntregaProgramada.toUtc().toIso8601String(),
         'detalles': detalles.map((d) => d.toCreateJson()).toList(),
       },
     );

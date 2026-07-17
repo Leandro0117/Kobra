@@ -90,15 +90,18 @@ model Venta {
   vendedorId     Int
   cliente        Cliente        @relation(fields: [clienteId], references: [id])
   clienteId      Int
-  fecha          DateTime       @default(now())
-  estado         EstadoVenta    @default(PENDIENTE)
-  total          Float
-  descuento      Float          @default(0)
-  tipoDescuento  TipoDescuento  @default(PORCENTAJE)
-  montoPagado    Float          @default(0)
-  medioPago      MedioPago?     @relation(fields: [medioPagoId], references: [id])
-  medioPagoId    Int?
-  detalles       DetalleVenta[]
+  fecha                  DateTime       @default(now())
+  estado                 EstadoVenta    @default(PENDIENTE)
+  total                  Float
+  descuento              Float          @default(0)
+  tipoDescuento          TipoDescuento  @default(PORCENTAJE)
+  montoPagado            Float          @default(0)
+  medioPago              MedioPago?     @relation(fields: [medioPagoId], references: [id])
+  medioPagoId            Int?
+  fechaEntregaProgramada DateTime?
+  fechaEntrega           DateTime?
+  fechaPago              DateTime?
+  detalles               DetalleVenta[]
 }
 
 enum EstadoVenta {

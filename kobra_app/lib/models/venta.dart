@@ -69,6 +69,9 @@ class Venta {
   final Cliente? cliente;
   final VendedorResumen? vendedor;
   final List<DetalleVenta> detalles;
+  final DateTime? fechaEntregaProgramada;
+  final DateTime? fechaEntrega;
+  final DateTime? fechaPago;
 
   Venta({
     required this.id,
@@ -84,6 +87,9 @@ class Venta {
     this.cliente,
     this.vendedor,
     this.detalles = const [],
+    this.fechaEntregaProgramada,
+    this.fechaEntrega,
+    this.fechaPago,
   });
 
   double get saldoPendiente => (total - montoPagado).clamp(0, double.infinity);
@@ -114,6 +120,15 @@ class Venta {
               .map((d) => DetalleVenta.fromJson(d as Map<String, dynamic>))
               .toList()
           : [],
+      fechaEntregaProgramada: json['fechaEntregaProgramada'] != null
+          ? DateTime.parse(json['fechaEntregaProgramada'] as String).toLocal()
+          : null,
+      fechaEntrega: json['fechaEntrega'] != null
+          ? DateTime.parse(json['fechaEntrega'] as String).toLocal()
+          : null,
+      fechaPago: json['fechaPago'] != null
+          ? DateTime.parse(json['fechaPago'] as String).toLocal()
+          : null,
     );
   }
 }

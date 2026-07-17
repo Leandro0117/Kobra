@@ -43,6 +43,9 @@ const SELECT_VENTA = {
     },
   },
   medioPago: { select: { id: true, nombre: true } },
+  fechaEntregaProgramada: true,
+  fechaEntrega: true,
+  fechaPago: true,
 } as const;
 
 function calcularTotal(subtotal: number, descuento: number, tipo: TipoDescuento): number {
@@ -90,6 +93,7 @@ export class VentasService {
     const total = calcularTotal(subtotal, descuento, tipoDescuento);
 
     const esPagado = dto.estado === 'PAGADO';
+    const esPorPagar = dto.estado === 'POR_PAGAR';
 
     return this.prisma.venta.create({
       data: {
@@ -100,8 +104,11 @@ export class VentasService {
         total,
         descuento,
         tipoDescuento,
+        ...(dto.fechaVenta ? { fecha: new Date(dto.fechaVenta) } : {}),
+        ...(dto.fechaEntregaProgramada ? { fechaEntregaProgramada: new Date(dto.fechaEntregaProgramada) } : {}),
+        ...(esPorPagar || esPagado ? { fechaEntrega: new Date() } : {}),
         ...(dto.medioPagoId ? { medioPagoId: dto.medioPagoId } : {}),
-        ...(esPagado ? { montoPagado: total } : {}),
+        ...(esPagado ? { montoPagado: total, fechaPago: new Date() } : {}),
         detalles: { create: detallesData },
       },
       select: SELECT_VENTA,
@@ -200,9 +207,13 @@ export class VentasService {
   // Actualiza el estado de una venta existente
   async actualizarEstado(id: number, dto: UpdateEstadoVentaDto, usuario: UsuarioActual) {
     const venta = await this.findOne(id, usuario);
+    const pasaAPorPagar = dto.estado === 'POR_PAGAR' && !venta.fechaEntrega;
     return this.prisma.venta.update({
       where: { id: venta.id },
-      data: { estado: dto.estado },
+      data: {
+        estado: dto.estado,
+        ...(pasaAPorPagar ? { fechaEntrega: new Date() } : {}),
+      },
       select: SELECT_VENTA,
     });
   }
@@ -217,7 +228,7 @@ export class VentasService {
       data: {
         montoPagado,
         medioPagoId: dto.medioPagoId,
-        ...(pagoCompleto && venta.estado === 'POR_PAGAR' && { estado: 'PAGADO' }),
+        ...(pagoCompleto && venta.estado === 'POR_PAGAR' && { estado: 'PAGADO', fechaPago: new Date() }),
       },
       select: SELECT_VENTA,
     });
