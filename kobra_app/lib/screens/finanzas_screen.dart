@@ -6,6 +6,8 @@ import '../models/categoria_gasto.dart';
 import '../models/cliente.dart';
 import '../models/estadisticas.dart';
 import '../models/finanzas.dart';
+import '../models/usuario.dart';
+import '../providers/auth_provider.dart';
 import '../providers/estadisticas_provider.dart';
 import '../utils/formato.dart';
 import '../widgets/estado_carga.dart';
@@ -93,12 +95,14 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
     final resumen = provider.resumen;
     if (resumen == null) return const SizedBox.shrink();
 
+    final esAdmin = context.read<AuthProvider>().usuario?.rol == Rol.ADMIN;
+
     return RefreshIndicator(
       onRefresh: () async => provider.cargar(forzar: true),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _BalanceCard(finanzas: resumen.finanzas),
+          _BalanceCard(finanzas: resumen.finanzas, esAdmin: esAdmin),
           const SizedBox(height: 20),
           _SeccionVentas(estadisticas: resumen.estadisticas),
           if (resumen.estadisticas.topVariantes.isNotEmpty) ...[
@@ -113,7 +117,7 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
             const SizedBox(height: 20),
             _SeccionMediosPago(mediosPago: resumen.finanzas.mediosPago),
           ],
-          if (resumen.finanzas.egresosPorCategoria.isNotEmpty) ...[
+          if (esAdmin && resumen.finanzas.egresosPorCategoria.isNotEmpty) ...[
             const SizedBox(height: 20),
             _SeccionEgresos(
               categorias: resumen.finanzas.egresosPorCategoria,
@@ -131,7 +135,8 @@ class _FinanzasScreenState extends State<FinanzasScreen> {
 
 class _BalanceCard extends StatelessWidget {
   final ResumenFinanzas finanzas;
-  const _BalanceCard({required this.finanzas});
+  final bool esAdmin;
+  const _BalanceCard({required this.finanzas, required this.esAdmin});
 
   @override
   Widget build(BuildContext context) {
@@ -145,39 +150,41 @@ class _BalanceCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: Column(
           children: [
-            Text(
-              'Balance',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              formatPrecio(finanzas.balance),
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                color: colorBalance,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              decoration: BoxDecoration(
-                color: colorBalance.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: Text(
-                esGanancia ? 'Ganancia' : 'Pérdida',
-                style: TextStyle(
-                  color: colorBalance,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+            if (esAdmin) ...[
+              Text(
+                'Balance',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 12),
+              const SizedBox(height: 6),
+              Text(
+                formatPrecio(finanzas.balance),
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: colorBalance,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorBalance.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  esGanancia ? 'Ganancia' : 'Pérdida',
+                  style: TextStyle(
+                    color: colorBalance,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 12),
+            ],
             _FilaBalance(
               label: 'Ingresos',
               valor: formatPrecio(finanzas.totalCobrado),
@@ -186,15 +193,17 @@ class _BalanceCard extends StatelessWidget {
                 context,
               ).push(MaterialPageRoute(builder: (_) => const VentasScreen())),
             ),
-            const SizedBox(height: 10),
-            _FilaBalance(
-              label: 'Egresos',
-              valor: formatPrecio(finanzas.totalEgresos),
-              color: Theme.of(context).colorScheme.error,
-              onTap: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const GastosScreen())),
-            ),
+            if (esAdmin) ...[
+              const SizedBox(height: 10),
+              _FilaBalance(
+                label: 'Egresos',
+                valor: formatPrecio(finanzas.totalEgresos),
+                color: Theme.of(context).colorScheme.error,
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const GastosScreen())),
+              ),
+            ],
             const SizedBox(height: 10),
             _FilaBalance(
               label: 'Por cobrar',
@@ -418,7 +427,7 @@ class _SeccionClientes extends StatelessWidget {
                       ),
                     ),
                     title: Text(c.nombre),
-                    subtitle: Text('${c.cantidadVentas} venta(s)'),
+                    subtitle: Text('${c.cantidadVentas} ${c.cantidadVentas == 1 ? 'venta' : 'ventas'}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -887,6 +896,25 @@ class _GraficoLinea extends StatelessWidget {
                   );
                 },
               ),
+            ),
+          ),
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (_) => Theme.of(context).colorScheme.inverseSurface,
+              getTooltipItems: (spots) => spots.map((s) {
+                final i = s.spotIndex;
+                final label = i < datos.length
+                    ? formatPrecio(datos[i].totalFacturado)
+                    : formatPrecio(s.y);
+                return LineTooltipItem(
+                  label,
+                  TextStyle(
+                    color: Theme.of(context).colorScheme.onInverseSurface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                );
+              }).toList(),
             ),
           ),
           lineBarsData: [

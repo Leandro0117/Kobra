@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import '../models/medio_pago.dart';
 import '../services/medios_pago_service.dart';
 import '../services/api_exception.dart';
+import 'cache_mixin.dart';
 
-class MediosPagoProvider extends ChangeNotifier {
+class MediosPagoProvider extends ChangeNotifier with CacheMixin {
   final MediosPagoService _service = MediosPagoService();
 
   List<MedioPago> _medios = [];
@@ -15,12 +16,15 @@ class MediosPagoProvider extends ChangeNotifier {
   bool get cargando => _cargando;
   String? get error => _error;
 
-  Future<void> cargar() async {
+  Future<void> cargar({bool forzar = false}) async {
+    if (!forzar && cacheVigente(const Duration(minutes: 10)) && _medios.isNotEmpty) return;
+
     _cargando = true;
     _error = null;
     notifyListeners();
     try {
       _medios = await _service.listar();
+      marcarCargado();
     } on ApiException catch (e) {
       _error = e.mensaje;
     } finally {

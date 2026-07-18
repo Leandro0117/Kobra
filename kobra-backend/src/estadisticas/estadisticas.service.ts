@@ -36,7 +36,7 @@ export interface PuntoVentaDia {
 export class EstadisticasService {
   constructor(private prisma: PrismaService) {}
 
-  async obtenerResumen(filtro: FiltroEstadisticasDto, negocioId: number) {
+  async obtenerResumen(filtro: FiltroEstadisticasDto, negocioId: number, vendedorId?: number) {
     const rangoFecha =
       filtro.desde || filtro.hasta
         ? {
@@ -49,6 +49,7 @@ export class EstadisticasService {
       negocioId,
       estado: { not: 'CANCELADO' },
       ...(rangoFecha ? { fecha: rangoFecha } : {}),
+      ...(vendedorId ? { vendedorId } : {}),
     };
 
     const whereGastos: Prisma.GastoWhereInput = {
@@ -56,7 +57,7 @@ export class EstadisticasService {
       ...(rangoFecha ? { fecha: rangoFecha } : {}),
     };
 
-    // Una sola ronda de queries: ventas (con includes para estadísticas) + gastos
+    // Los gastos son del negocio, no del vendedor — no se muestran al vendedor
     const [ventas, gastos] = await Promise.all([
       this.prisma.venta.findMany({
         where: whereVentas,
@@ -65,20 +66,22 @@ export class EstadisticasService {
           detalles: { include: { variante: { include: { producto: true } } } },
         },
       }),
-      this.prisma.gasto.findMany({
-        where: whereGastos,
-        select: {
-          total: true,
-          categoria: true,
-          detalles: {
+      vendedorId
+        ? Promise.resolve([] as { total: number; categoria: CategoriaGasto; detalles: { cantidad: number; precioUnitario: number; insumo: { nombre: string } | null }[] }[])
+        : this.prisma.gasto.findMany({
+            where: whereGastos,
             select: {
-              cantidad: true,
-              precioUnitario: true,
-              insumo: { select: { nombre: true } },
+              total: true,
+              categoria: true,
+              detalles: {
+                select: {
+                  cantidad: true,
+                  precioUnitario: true,
+                  insumo: { select: { nombre: true } },
+                },
+              },
             },
-          },
-        },
-      }),
+          }),
     ]);
 
     // ── Estadísticas ──────────────────────────────────────────────────────────
@@ -138,7 +141,7 @@ export class EstadisticasService {
     }
 
     const topClientes = [...porCliente.values()]
-      .sort((a, b) => b.cantidadVentas - a.cantidadVentas)
+      .sort((a, b) => b.totalComprado - a.totalComprado)
       .slice(0, 5);
 
     const topProductos = [...porProducto.values()]
@@ -174,7 +177,7 @@ export class EstadisticasService {
     for (const gasto of gastos) {
       for (const detalle of gasto.detalles) {
         const porInsumo = porCategoriaInsumo.get(gasto.categoria) ?? new Map<string, number>();
-        const nombre = detalle.insumo.nombre;
+        const nombre = detalle.insumo?.nombre ?? 'Sin nombre';
         porInsumo.set(nombre, (porInsumo.get(nombre) ?? 0) + detalle.cantidad * detalle.precioUnitario);
         porCategoriaInsumo.set(gasto.categoria, porInsumo);
       }

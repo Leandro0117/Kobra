@@ -203,17 +203,22 @@ class _VentasScreenState extends State<VentasScreen> {
                         ?.copyWith(color: Theme.of(context).colorScheme.primary),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    '$labelCantidad · ${formatPrecio(resumen.total)}',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
+                  Flexible(
+                    child: Text(
+                      '$labelCantidad · ${formatPrecio(resumen.total)}',
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                    ),
                   ),
                 ],
               ),
             );
           }
           final venta = item as Venta;
+          String cantidadStr(double c) =>
+              c == c.truncateToDouble() ? c.toInt().toString() : c.toString();
           return Column(
             children: [
               IntrinsicHeight(
@@ -222,39 +227,77 @@ class _VentasScreenState extends State<VentasScreen> {
                   children: [
                     Container(width: 5, color: _colorEstado(venta.estado)),
                     Expanded(
-                      child: ListTile(
-                        title: Text(
-                            venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}'),
-                        subtitle: Text(
-                          esAdmin
-                              ? '${venta.vendedor?.nombre ?? ''} · ${estadoLabel(venta.estado)}'
-                              : estadoLabel(venta.estado),
-                        ),
-                        trailing: venta.estado == EstadoVenta.PAGO_PARCIAL
-                            ? Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    formatPrecio(venta.saldoPendiente),
-                                    style: Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                  Text(
-                                    'restante',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(color: const Color(0xFF7B5EA7)),
-                                  ),
-                                ],
-                              )
-                            : Text(
-                                formatPrecio(venta.total),
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
+                      child: InkWell(
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => DetalleVentaScreen(ventaId: venta.id),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      estadoLabel(venta.estado),
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                            color: _colorEstado(venta.estado),
+                                          ),
+                                    ),
+                                    Text(
+                                      venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}',
+                                      style: Theme.of(context).textTheme.bodyLarge,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    ...venta.detalles.map((d) {
+                                      final nombre = d.variante?.nombreCompleto() ?? d.variante?.nombre ?? '?';
+                                      final prefix = d.cantidad > 1 ? '${cantidadStr(d.cantidad)}x ' : '';
+                                      return Text(
+                                        '$prefix$nombre',
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      );
+                                    }),
+                                    if (esAdmin && venta.vendedor != null) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        venta.vendedor!.nombre,
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: Theme.of(context).colorScheme.outline,
+                                            ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              venta.estado == EstadoVenta.PAGO_PARCIAL
+                                  ? Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          formatPrecio(venta.saldoPendiente),
+                                          style: Theme.of(context).textTheme.titleMedium,
+                                        ),
+                                        Text(
+                                          'restante',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(color: const Color(0xFF7B5EA7)),
+                                        ),
+                                      ],
+                                    )
+                                  : Text(
+                                      formatPrecio(venta.total),
+                                      style: Theme.of(context).textTheme.titleMedium,
+                                    ),
+                            ],
                           ),
                         ),
                       ),
@@ -467,7 +510,7 @@ class _FiltroSheetState extends State<_FiltroSheet> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return DraggableScrollableSheet(
-      initialChildSize: widget.esAdmin ? 0.75 : 0.45,
+      initialChildSize: widget.esAdmin ? 0.90 : 0.60,
       minChildSize: 0.35,
       maxChildSize: 0.92,
       expand: false,

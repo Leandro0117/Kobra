@@ -9,12 +9,12 @@ import type { UsuarioActual } from '../common/decorators/current-user.decorator'
 
 @Controller('estadisticas')
 @UseGuards(RolesGuard)
-@Roles(Rol.ADMIN)
 export class EstadisticasController {
   constructor(private estadisticasService: EstadisticasService) {}
 
   @Get()
   obtenerResumen(@Query() filtro: FiltroEstadisticasDto, @CurrentUser() usuario: UsuarioActual) {
-    return this.estadisticasService.obtenerResumen(filtro, usuario.negocioId);
+    const vendedorId = usuario.rol === Rol.VENDEDOR ? usuario.userId : undefined;
+    return this.estadisticasService.obtenerResumen(filtro, usuario.negocioId, vendedorId);
   }
 }

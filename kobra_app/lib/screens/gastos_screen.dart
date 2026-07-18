@@ -20,6 +20,21 @@ String _etiquetaFecha(DateTime fecha) {
   return DateFormat('d MMMM', 'es').format(fecha);
 }
 
+Color _colorCategoria(CategoriaGasto cat) {
+  switch (cat) {
+    case CategoriaGasto.INSUMOS:
+      return const Color(0xFF378ADD);
+    case CategoriaGasto.EQUIPAMIENTO:
+      return const Color(0xFFEF9F27);
+    case CategoriaGasto.SERVICIOS:
+      return const Color(0xFF639922);
+    case CategoriaGasto.TRANSPORTE:
+      return const Color(0xFF7B5EA7);
+    case CategoriaGasto.OTRO:
+      return const Color(0xFF888780);
+  }
+}
+
 class GastosScreen extends StatefulWidget {
   final CategoriaGasto? categoriaInicial;
 
@@ -158,10 +173,21 @@ class _GastosScreenState extends State<GastosScreen> {
                   return const Center(child: Text('No hay gastos registrados todavía.'));
                 }
 
-                // Construir lista con encabezados de fecha
+                final gastos = gastosProvider.gastos;
+
+                // Resumen por día
+                final resumenPorDia = <DateTime, ({int cantidad, double total})>{};
+                for (final g in gastos) {
+                  final dia = DateTime(g.fecha.year, g.fecha.month, g.fecha.day);
+                  final prev = resumenPorDia[dia];
+                  resumenPorDia[dia] = prev == null
+                      ? (cantidad: 1, total: g.total)
+                      : (cantidad: prev.cantidad + 1, total: prev.total + g.total);
+                }
+
                 final items = <Object>[];
                 DateTime? diaActual;
-                for (final gasto in gastosProvider.gastos) {
+                for (final gasto in gastos) {
                   final dia = DateTime(gasto.fecha.year, gasto.fecha.month, gasto.fecha.day);
                   if (diaActual == null || dia != diaActual) {
                     items.add(dia);
@@ -169,6 +195,9 @@ class _GastosScreenState extends State<GastosScreen> {
                   }
                   items.add(gasto);
                 }
+
+                String cantidadStr(double c) =>
+                    c == c.truncateToDouble() ? c.toInt().toString() : c.toString();
 
                 return RefreshIndicator(
                   onRefresh: () => gastosProvider.cargar(),
@@ -178,14 +207,31 @@ class _GastosScreenState extends State<GastosScreen> {
                       final item = items[index];
 
                       if (item is DateTime) {
+                        final resumen = resumenPorDia[item]!;
+                        final labelCantidad = resumen.cantidad == 1
+                            ? '1 gasto'
+                            : '${resumen.cantidad} gastos';
                         return Padding(
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                          child: Text(
-                            _etiquetaFecha(item),
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
-                                ?.copyWith(color: Theme.of(context).colorScheme.primary),
+                          child: Row(
+                            children: [
+                              Text(
+                                _etiquetaFecha(item),
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  '$labelCantidad · ${formatPrecio(resumen.total)}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                        color: Theme.of(context).colorScheme.outline,
+                                      ),
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       }
@@ -193,27 +239,77 @@ class _GastosScreenState extends State<GastosScreen> {
                       final gasto = item as Gasto;
                       return Column(
                         children: [
-                          ListTile(
-                            title: Text(gasto.proveedor?.nombre ?? 'Proveedor #${gasto.proveedorId}'),
-                            subtitle: Text(categoriaGastoLabel(gasto.categoria)),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
+                          IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Text(
-                                  formatPrecio(gasto.total),
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline),
-                                  tooltip: 'Eliminar gasto',
-                                  onPressed: () => _confirmarEliminar(gasto),
+                                Container(width: 5, color: _colorCategoria(gasto.categoria)),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => DetalleGastoScreen(gastoId: gasto.id),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  categoriaGastoLabel(gasto.categoria),
+                                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                        color: _colorCategoria(gasto.categoria),
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                ...gasto.detalles.map((d) {
+                                                  final nombre = d.insumo?.nombre ?? 'Insumo #${d.insumoId}';
+                                                  final prefix = d.cantidad > 1 ? '${cantidadStr(d.cantidad)} ' : '';
+                                                  return Text(
+                                                    '$prefix$nombre',
+                                                    style: Theme.of(context).textTheme.bodyLarge,
+                                                  );
+                                                }),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  gasto.proveedor?.nombre ?? 'Proveedor #${gasto.proveedorId}',
+                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                        color: Theme.of(context).colorScheme.outline,
+                                                      ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                formatPrecio(gasto.total),
+                                                style: Theme.of(context).textTheme.titleMedium,
+                                              ),
+                                              // IconButton(
+                                              //   icon: const Icon(Icons.delete_outline),
+                                              //   tooltip: 'Eliminar gasto',
+                                              //   padding: EdgeInsets.zero,
+                                              //   constraints: const BoxConstraints(),
+                                              //   onPressed: () => _confirmarEliminar(gasto),
+                                              // ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ],
-                            ),
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => DetalleGastoScreen(gastoId: gasto.id),
-                              ),
                             ),
                           ),
                           const Divider(height: 1),

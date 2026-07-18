@@ -53,7 +53,18 @@ class HomeScreen extends StatelessWidget {
           ]
         : null;
 
-    final opcionesVendedor = esAdmin ? null : opcionesVentas(context, false);
+    final opcionesVendedor = esAdmin
+        ? null
+        : [
+            ...opcionesVentas(context, false),
+            OpcionMenu(
+              titulo: 'Resumen',
+              icono: Icons.dashboard_outlined,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FinanzasScreen()),
+              ),
+            ),
+          ];
 
     return Scaffold(
       appBar: AppBar(
