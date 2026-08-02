@@ -71,10 +71,12 @@ export class VentasService {
       throw new BadRequestException('Una o más variantes no existen');
     }
 
-    const cliente = await this.prisma.cliente.findUnique({
-      where: { id: dto.clienteId, negocioId: usuario.negocioId },
-    });
-    if (!cliente) throw new BadRequestException('El cliente indicado no existe');
+    if (dto.clienteId != null) {
+      const cliente = await this.prisma.cliente.findUnique({
+        where: { id: dto.clienteId, negocioId: usuario.negocioId },
+      });
+      if (!cliente) throw new BadRequestException('El cliente indicado no existe');
+    }
 
     const variantesPorId = new Map(variantes.map((v) => [v.id, v]));
 
@@ -101,7 +103,7 @@ export class VentasService {
       data: {
         negocioId: usuario.negocioId,
         vendedorId: usuario.userId,
-        clienteId: dto.clienteId,
+        clienteId: dto.clienteId ?? null,
         estado: dto.estado,
         total,
         descuento,
@@ -129,6 +131,11 @@ export class VentasService {
 
     if (filtro.clienteId) where.clienteId = filtro.clienteId;
     if (filtro.estado) where.estado = filtro.estado;
+
+    const fechaFiltro: { gte?: Date; lte?: Date } = {};
+    if (filtro.desde) fechaFiltro.gte = new Date(filtro.desde);
+    if (filtro.hasta) fechaFiltro.lte = new Date(filtro.hasta);
+    if (filtro.desde || filtro.hasta) where.fecha = fechaFiltro;
 
     return this.prisma.venta.findMany({
       where,

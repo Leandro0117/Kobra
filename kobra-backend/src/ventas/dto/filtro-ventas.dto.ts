@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional } from 'class-validator';
 import { EstadoVenta } from '@prisma/client';
 
 export class FiltroVentasDto {
@@ -16,4 +16,12 @@ export class FiltroVentasDto {
   @IsOptional()
   @IsEnum(EstadoVenta)
   estado?: EstadoVenta;
+
+  @IsOptional()
+  @IsDateString()
+  desde?: string;
+
+  @IsOptional()
+  @IsDateString()
+  hasta?: string;
 }

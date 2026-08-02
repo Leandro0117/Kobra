@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../version.dart';
 import 'package:provider/provider.dart';
 import '../models/usuario.dart';
 import '../providers/auth_provider.dart';
@@ -198,6 +199,16 @@ class _UserDrawer extends StatelessWidget {
               ),
 
             const Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Versión $appVersion',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+              ),
+            ),
             const Divider(height: 1),
 
             // ── Cerrar sesión ──

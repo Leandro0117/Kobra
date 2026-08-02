@@ -23,8 +23,9 @@ export class DetalleVentaInputDto {
 }
 
 export class CreateVentaDto {
+  @IsOptional()
   @IsInt()
-  clienteId: number;
+  clienteId?: number;
 
   @IsOptional()
   @IsEnum(EstadoVenta)

@@ -7,13 +7,25 @@ class FiltroVentas {
   final int? vendedorId;
   final int? clienteId;
   final EstadoVenta? estado;
+  final DateTime? desde;
+  final DateTime? hasta;
 
-  FiltroVentas({this.vendedorId, this.clienteId, this.estado});
+  FiltroVentas({this.vendedorId, this.clienteId, this.estado, this.desde, this.hasta});
+
+  static FiltroVentas mesActual() {
+    final now = DateTime.now();
+    return FiltroVentas(
+      desde: DateTime(now.year, now.month, 1),
+      hasta: DateTime(now.year, now.month + 1, 0, 23, 59, 59),
+    );
+  }
 
   Map<String, dynamic> toQuery() => {
         if (vendedorId != null) 'vendedorId': vendedorId,
         if (clienteId != null) 'clienteId': clienteId,
         if (estado != null) 'estado': estado!.name,
+        if (desde != null) 'desde': desde!.toUtc().toIso8601String(),
+        if (hasta != null) 'hasta': hasta!.toUtc().toIso8601String(),
       };
 }
 
@@ -29,7 +41,7 @@ class VentasService {
   }
 
   Future<Venta> crear({
-    required int clienteId,
+    int? clienteId,
     required List<DetalleVenta> detalles,
     EstadoVenta? estado,
     double descuento = 0,
@@ -39,7 +51,7 @@ class VentasService {
     DateTime? fechaEntregaProgramada,
   }) async {
     final payload = {
-      'clienteId': clienteId,
+      'clienteId': ?clienteId,
       if (estado != null) 'estado': estado.name,
       'descuento': descuento,
       'tipoDescuento': tipoDescuento.name,

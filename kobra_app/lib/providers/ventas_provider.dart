@@ -47,7 +47,7 @@ class VentasProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
   }
 
   Future<Venta?> crear({
-    required int clienteId,
+    int? clienteId,
     required List<DetalleVenta> detalles,
     EstadoVenta? estado,
     double descuento = 0,

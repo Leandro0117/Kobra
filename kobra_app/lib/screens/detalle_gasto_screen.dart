@@ -107,7 +107,7 @@ class _DetalleGastoScreenState extends State<DetalleGastoScreen> {
       children: [
         Text('Proveedor', style: Theme.of(context).textTheme.labelMedium),
         Text(
-          gasto.proveedor?.nombre ?? 'Proveedor #${gasto.proveedorId}',
+          gasto.proveedor?.nombre ?? (gasto.proveedorId != null ? 'Proveedor #${gasto.proveedorId}' : 'Sin proveedor'),
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 12),
@@ -129,7 +129,7 @@ class _DetalleGastoScreenState extends State<DetalleGastoScreen> {
         ...gasto.detalles.map(
           (d) => ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(d.insumo?.nombre ?? 'Insumo #${d.insumoId}'),
+            title: Text(d.nombre),
             subtitle: Text(
               '${formatPrecio(d.precioUnitario)} x ${formatMonto(d.cantidad)}',
             ),

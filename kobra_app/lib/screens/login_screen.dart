@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../version.dart';
 import '../widgets/kobra_logo.dart';
 import 'registro_screen.dart';
 
@@ -139,6 +140,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 MaterialPageRoute(builder: (_) => const RegistroScreen()),
                               ),
                       child: const Text('¿No tienes cuenta? Crear cuenta'),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Versión $appVersion',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
                     ),
                   ],
                 ),

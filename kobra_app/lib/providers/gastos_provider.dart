@@ -47,7 +47,7 @@ class GastosProvider extends ChangeNotifier with CargaLentaMixin, CacheMixin {
   }
 
   Future<Gasto?> crear({
-    required int proveedorId,
+    int? proveedorId,
     required CategoriaGasto categoria,
     required List<DetalleGasto> detalles,
   }) async {

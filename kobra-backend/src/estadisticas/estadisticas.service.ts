@@ -94,15 +94,21 @@ export class EstadisticasService {
     const porDia = new Map<string, PuntoVentaDia>();
 
     for (const venta of ventas) {
-      const cliente = porCliente.get(venta.clienteId) ?? {
-        clienteId: venta.clienteId,
-        nombre: venta.cliente.nombre,
-        cantidadVentas: 0,
-        cantidadProductos: 0,
-        totalComprado: 0,
-      };
-      cliente.cantidadVentas += 1;
-      cliente.totalComprado += venta.total;
+      if (venta.clienteId != null && venta.cliente != null) {
+        const cliente = porCliente.get(venta.clienteId) ?? {
+          clienteId: venta.clienteId,
+          nombre: venta.cliente.nombre,
+          cantidadVentas: 0,
+          cantidadProductos: 0,
+          totalComprado: 0,
+        };
+        cliente.cantidadVentas += 1;
+        cliente.totalComprado += venta.total;
+        for (const detalle of venta.detalles) {
+          cliente.cantidadProductos += detalle.cantidad;
+        }
+        porCliente.set(venta.clienteId, cliente);
+      }
 
       const dia = venta.fecha.toISOString().slice(0, 10);
       const punto = porDia.get(dia) ?? { fecha: dia, totalVentas: 0, totalFacturado: 0 };
@@ -111,8 +117,6 @@ export class EstadisticasService {
       porDia.set(dia, punto);
 
       for (const detalle of venta.detalles) {
-        cliente.cantidadProductos += detalle.cantidad;
-
         const productoId = detalle.variante.productoId;
         const producto = porProducto.get(productoId) ?? {
           productoId,
@@ -136,8 +140,6 @@ export class EstadisticasService {
         variante.totalFacturado += detalle.cantidad * detalle.precioUnitario;
         porVariante.set(vId, variante);
       }
-
-      porCliente.set(venta.clienteId, cliente);
     }
 
     const topClientes = [...porCliente.values()]

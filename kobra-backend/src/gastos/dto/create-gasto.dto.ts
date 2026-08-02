@@ -4,28 +4,34 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsOptional,
   IsPositive,
+  IsString,
   ValidateNested,
 } from 'class-validator';
 import { CategoriaGasto } from '@prisma/client';
 
 export class DetalleGastoInputDto {
+  @IsOptional()
   @IsInt()
-  insumoId: number;
+  insumoId?: number;
+
+  @IsOptional()
+  @IsString()
+  concepto?: string;
 
   @IsPositive()
   cantidad: number;
 
-  // A diferencia de las ventas, aquí no hay un precio "oficial" guardado en
-  // el catálogo: es lo que efectivamente se pagó en esa compra, y varía de
-  // una compra a otra. Lo ingresa quien registra el gasto.
+  // Lo que efectivamente se pagó en esa compra (varía por transacción).
   @IsPositive()
   precioUnitario: number;
 }
 
 export class CreateGastoDto {
+  @IsOptional()
   @IsInt()
-  proveedorId: number;
+  proveedorId?: number;
 
   @IsEnum(CategoriaGasto)
   categoria: CategoriaGasto;

@@ -88,8 +88,8 @@ model Venta {
   negocioId      Int
   vendedor       Usuario        @relation(fields: [vendedorId], references: [id])
   vendedorId     Int
-  cliente        Cliente        @relation(fields: [clienteId], references: [id])
-  clienteId      Int
+  cliente        Cliente?       @relation(fields: [clienteId], references: [id])
+  clienteId      Int?
   fecha                  DateTime       @default(now())
   estado                 EstadoVenta    @default(PENDIENTE)
   total                  Float
@@ -176,8 +176,8 @@ model Gasto {
   negocioId   Int
   usuario     Usuario        @relation(fields: [usuarioId], references: [id])
   usuarioId   Int
-  proveedor   Proveedor      @relation(fields: [proveedorId], references: [id])
-  proveedorId Int
+  proveedor   Proveedor?     @relation(fields: [proveedorId], references: [id])
+  proveedorId Int?
   categoria   CategoriaGasto
   fecha       DateTime       @default(now())
   total       Float
@@ -185,11 +185,12 @@ model Gasto {
 }
 
 model DetalleGasto {
-  id             Int    @id @default(autoincrement())
-  gasto          Gasto  @relation(fields: [gastoId], references: [id])
+  id             Int     @id @default(autoincrement())
+  gasto          Gasto   @relation(fields: [gastoId], references: [id])
   gastoId        Int
-  insumo         Insumo @relation(fields: [insumoId], references: [id])
-  insumoId       Int
+  insumo         Insumo? @relation(fields: [insumoId], references: [id])
+  insumoId       Int?
+  concepto       String?
   cantidad       Float
   precioUnitario Float
 }

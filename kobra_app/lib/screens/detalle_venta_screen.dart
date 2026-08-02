@@ -504,7 +504,7 @@ class _DetalleVentaScreenState extends State<DetalleVentaScreen> {
       children: [
         Text('Cliente', style: Theme.of(context).textTheme.labelMedium),
         Text(
-          venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}',
+          venta.cliente?.nombre ?? 'Venta rápida',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 12),

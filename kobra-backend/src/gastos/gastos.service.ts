@@ -15,25 +15,32 @@ export class GastosService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateGastoDto, usuario: UsuarioActual) {
-    const insumoIds = dto.detalles.map((d) => d.insumoId);
-    const insumos = await this.prisma.insumo.findMany({
-      where: { id: { in: insumoIds }, negocioId: usuario.negocioId },
-    });
-
-    if (insumos.length !== new Set(insumoIds).size) {
-      throw new BadRequestException('Uno o más insumos no existen');
+    // Validar insumos solo en los detalles que los usen
+    const detallesConInsumo = dto.detalles.filter((d) => d.insumoId != null);
+    if (detallesConInsumo.length > 0) {
+      const insumoIds = detallesConInsumo.map((d) => d.insumoId!);
+      const insumos = await this.prisma.insumo.findMany({
+        where: { id: { in: insumoIds }, negocioId: usuario.negocioId },
+      });
+      if (insumos.length !== new Set(insumoIds).size) {
+        throw new BadRequestException('Uno o más insumos no existen');
+      }
     }
 
-    const proveedor = await this.prisma.proveedor.findUnique({
-      where: { id: dto.proveedorId, negocioId: usuario.negocioId },
-    });
-    if (!proveedor) throw new BadRequestException('El proveedor indicado no existe');
+    // Validar proveedor solo si viene
+    if (dto.proveedorId != null) {
+      const proveedor = await this.prisma.proveedor.findUnique({
+        where: { id: dto.proveedorId, negocioId: usuario.negocioId },
+      });
+      if (!proveedor) throw new BadRequestException('El proveedor indicado no existe');
+    }
 
     let total = 0;
     const detallesData = dto.detalles.map((d) => {
       total += d.precioUnitario * d.cantidad;
       return {
-        insumoId: d.insumoId,
+        insumoId: d.insumoId ?? null,
+        concepto: d.concepto ?? null,
         cantidad: d.cantidad,
         precioUnitario: d.precioUnitario,
       };
@@ -43,7 +50,7 @@ export class GastosService {
       data: {
         negocioId: usuario.negocioId,
         usuarioId: usuario.userId,
-        proveedorId: dto.proveedorId,
+        proveedorId: dto.proveedorId ?? null,
         categoria: dto.categoria,
         total,
         detalles: { create: detallesData },
@@ -56,6 +63,11 @@ export class GastosService {
     const where: Record<string, unknown> = { negocioId: usuario.negocioId };
     if (filtro.proveedorId) where.proveedorId = filtro.proveedorId;
     if (filtro.categoria) where.categoria = filtro.categoria;
+
+    const fechaFiltro: { gte?: Date; lte?: Date } = {};
+    if (filtro.desde) fechaFiltro.gte = new Date(filtro.desde);
+    if (filtro.hasta) fechaFiltro.lte = new Date(filtro.hasta);
+    if (filtro.desde || filtro.hasta) where.fecha = fechaFiltro;
 
     return this.prisma.gasto.findMany({
       where,

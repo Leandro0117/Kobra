@@ -6,12 +6,24 @@ import '../models/categoria_gasto.dart';
 class FiltroGastos {
   final int? proveedorId;
   final CategoriaGasto? categoria;
+  final DateTime? desde;
+  final DateTime? hasta;
 
-  FiltroGastos({this.proveedorId, this.categoria});
+  FiltroGastos({this.proveedorId, this.categoria, this.desde, this.hasta});
+
+  static FiltroGastos mesActual() {
+    final now = DateTime.now();
+    return FiltroGastos(
+      desde: DateTime(now.year, now.month, 1),
+      hasta: DateTime(now.year, now.month + 1, 0, 23, 59, 59),
+    );
+  }
 
   Map<String, dynamic> toQuery() => {
         if (proveedorId != null) 'proveedorId': proveedorId,
         if (categoria != null) 'categoria': categoria!.name,
+        if (desde != null) 'desde': desde!.toUtc().toIso8601String(),
+        if (hasta != null) 'hasta': hasta!.toUtc().toIso8601String(),
       };
 }
 
@@ -27,14 +39,14 @@ class GastosService {
   }
 
   Future<Gasto> crear({
-    required int proveedorId,
+    int? proveedorId,
     required CategoriaGasto categoria,
     required List<DetalleGasto> detalles,
   }) async {
     final response = await ApiClient.post<Map<String, dynamic>>(
       '/gastos',
       data: {
-        'proveedorId': proveedorId,
+        'proveedorId': ?proveedorId,
         'categoria': categoria.name,
         'detalles': detalles.map((d) => d.toCreateJson()).toList(),
       },

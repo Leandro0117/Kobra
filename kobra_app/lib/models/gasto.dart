@@ -21,7 +21,7 @@ class UsuarioResumen {
 class Gasto {
   final int id;
   final int usuarioId;
-  final int proveedorId;
+  final int? proveedorId;
   final CategoriaGasto categoria;
   final DateTime fecha;
   final double total;
@@ -32,7 +32,7 @@ class Gasto {
   Gasto({
     required this.id,
     required this.usuarioId,
-    required this.proveedorId,
+    this.proveedorId,
     required this.categoria,
     required this.fecha,
     required this.total,
@@ -45,7 +45,7 @@ class Gasto {
     return Gasto(
       id: json['id'] as int,
       usuarioId: json['usuarioId'] as int,
-      proveedorId: json['proveedorId'] as int,
+      proveedorId: json['proveedorId'] as int?,
       categoria: categoriaGastoFromString(json['categoria'] as String),
       fecha: DateTime.parse(json['fecha'] as String).toLocal(),
       total: (json['total'] as num).toDouble(),

@@ -24,6 +24,13 @@ class _LineaCarritoGasto {
   double get subtotal => cantidad * precioUnitario;
 }
 
+class _LineaGastoRapido {
+  String concepto;
+  double precio;
+
+  _LineaGastoRapido({required this.concepto, required this.precio});
+}
+
 class NuevoGastoScreen extends StatefulWidget {
   const NuevoGastoScreen({super.key});
 
@@ -38,6 +45,11 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
   bool _guardando = false;
   final _busquedaInsumoController = TextEditingController();
   String _busquedaInsumo = '';
+
+  bool _modoRapido = false;
+  final List<_LineaGastoRapido> _carritoRapido = [];
+  final _conceptoRapidoController = TextEditingController();
+  final _precioRapidoController = TextEditingController();
 
   @override
   void initState() {
@@ -54,6 +66,8 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
   @override
   void dispose() {
     _busquedaInsumoController.dispose();
+    _conceptoRapidoController.dispose();
+    _precioRapidoController.dispose();
     super.dispose();
   }
 
@@ -224,31 +238,75 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
     }
   }
 
-  Future<void> _guardarGasto() async {
-    if (_proveedorSeleccionado == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Selecciona un proveedor')));
+  void _agregarConceptoRapido() {
+    final concepto = _conceptoRapidoController.text.trim();
+    final precio = double.tryParse(_precioRapidoController.text.trim());
+
+    if (concepto.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un concepto')),
+      );
       return;
     }
-    if (_carrito.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Agrega al menos un insumo')));
+    if (precio == null || precio <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un precio válido')),
+      );
       return;
+    }
+
+    setState(() {
+      _carritoRapido.add(_LineaGastoRapido(concepto: concepto, precio: precio));
+      _conceptoRapidoController.clear();
+      _precioRapidoController.clear();
+    });
+  }
+
+  Future<void> _guardarGasto() async {
+    if (_modoRapido) {
+      if (_carritoRapido.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Agrega al menos un concepto')),
+        );
+        return;
+      }
+    } else {
+      if (_proveedorSeleccionado == null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Selecciona un proveedor')));
+        return;
+      }
+      if (_carrito.isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Agrega al menos un insumo')));
+        return;
+      }
     }
 
     setState(() => _guardando = true);
 
-    final detalles = _carrito
-        .map((l) => DetalleGasto(
-              insumoId: l.insumo.id,
-              cantidad: l.cantidad,
-              precioUnitario: l.precioUnitario,
-            ))
-        .toList();
+    final List<DetalleGasto> detalles;
+    if (_modoRapido) {
+      detalles = _carritoRapido
+          .map((l) => DetalleGasto(
+                concepto: l.concepto,
+                cantidad: 1,
+                precioUnitario: l.precio,
+              ))
+          .toList();
+    } else {
+      detalles = _carrito
+          .map((l) => DetalleGasto(
+                insumoId: l.insumo.id,
+                cantidad: l.cantidad,
+                precioUnitario: l.precioUnitario,
+              ))
+          .toList();
+    }
 
     final gastosProvider = context.read<GastosProvider>();
     final gasto = await gastosProvider.crear(
-      proveedorId: _proveedorSeleccionado!.id,
+      proveedorId: _proveedorSeleccionado?.id,
       categoria: _categoriaSeleccionada,
       detalles: detalles,
     );
@@ -272,14 +330,35 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
     final proveedoresProvider = context.watch<ProveedoresProvider>();
     final insumosProvider = context.watch<InsumosProvider>();
 
+    final totalRapido = _carritoRapido.fold(0.0, (sum, l) => sum + l.precio);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuevo gasto')),
+      appBar: AppBar(
+        title: Text(_modoRapido ? 'Nuevo gasto rápido' : 'Nuevo gasto'),
+        actions: [
+          IconButton(
+            tooltip: _modoRapido ? 'Modo normal' : 'Gasto rápido (sin insumo registrado)',
+            icon: Icon(
+              Icons.bolt,
+              color: _modoRapido ? Colors.purple : null,
+            ),
+            onPressed: () => setState(() {
+              _modoRapido = !_modoRapido;
+              _carrito.clear();
+              _carritoRapido.clear();
+              _busquedaInsumoController.clear();
+              _conceptoRapidoController.clear();
+              _precioRapidoController.clear();
+            }),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Selector de proveedor
+            // Selector de proveedor (opcional en modo rápido)
             if (proveedoresProvider.cargando)
               EstadoCargando(avisoServidorLento: proveedoresProvider.avisoServidorLento)
             else if (proveedoresProvider.error != null)
@@ -290,18 +369,21 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
             else
               DropdownButtonFormField<Proveedor>(
                 initialValue: _proveedorSeleccionado,
-                decoration: const InputDecoration(
-                  labelText: 'Proveedor',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: _modoRapido ? 'Proveedor (opcional)' : 'Proveedor',
+                  border: const OutlineInputBorder(),
                 ),
-                items: proveedoresProvider.proveedores
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p.nombre)))
-                    .toList(),
+                items: [
+                  if (_modoRapido)
+                    const DropdownMenuItem(value: null, child: Text('Sin proveedor')),
+                  ...proveedoresProvider.proveedores
+                      .map((p) => DropdownMenuItem(value: p, child: Text(p.nombre))),
+                ],
                 onChanged: (p) => setState(() => _proveedorSeleccionado = p),
               ),
             const SizedBox(height: 16),
 
-            // Selector de categoría
+            // Selector de categoría (siempre obligatorio)
             DropdownButtonFormField<CategoriaGasto>(
               initialValue: _categoriaSeleccionada,
               decoration: const InputDecoration(
@@ -315,95 +397,155 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Selector de insumos con búsqueda
-            if (insumosProvider.cargando)
-              EstadoCargando(avisoServidorLento: insumosProvider.avisoServidorLento)
-            else if (insumosProvider.error != null)
-              EstadoError(
-                mensaje: insumosProvider.error!,
-                onReintentar: () => insumosProvider.cargar(),
-              )
-            else ...[
-              TextField(
-                controller: _busquedaInsumoController,
-                decoration: InputDecoration(
-                  hintText: 'Buscar insumo…',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _busquedaInsumo.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () => _busquedaInsumoController.clear(),
-                        )
-                      : null,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Builder(builder: (context) {
-                final query = _busquedaInsumo.trim().toLowerCase();
-                final filtrados = query.isEmpty
-                    ? insumosProvider.insumos
-                    : insumosProvider.insumos
-                        .where((i) => i.nombre.toLowerCase().contains(query))
-                        .toList();
-
-                if (query.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                if (filtrados.isEmpty) {
-                  return Wrap(
-                    children: [
-                      ActionChip(
-                        avatar: const Icon(Icons.add_circle_outline, size: 18),
-                        label: Text('Crear "${_busquedaInsumo.trim()}"'),
-                        onPressed: () => _crearInsumo(_busquedaInsumo.trim()),
+            if (_modoRapido) ...[
+              // ── Modo rápido: concepto + precio inline ──
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _conceptoRapidoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Concepto',
+                        border: OutlineInputBorder(),
+                        isDense: true,
                       ),
-                    ],
-                  );
-                }
+                      textCapitalization: TextCapitalization.sentences,
+                      onSubmitted: (_) => _agregarConceptoRapido(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _precioRapidoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Precio',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        prefixText: '\$ ',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onSubmitted: (_) => _agregarConceptoRapido(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: _agregarConceptoRapido,
+                    icon: const Icon(Icons.add),
+                    tooltip: 'Agregar',
+                  ),
+                ],
+              ),
+            ] else ...[
+              // ── Modo normal: buscador de insumos ──
+              if (insumosProvider.cargando)
+                EstadoCargando(avisoServidorLento: insumosProvider.avisoServidorLento)
+              else if (insumosProvider.error != null)
+                EstadoError(
+                  mensaje: insumosProvider.error!,
+                  onReintentar: () => insumosProvider.cargar(),
+                )
+              else ...[
+                TextField(
+                  controller: _busquedaInsumoController,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar insumo…',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _busquedaInsumo.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => _busquedaInsumoController.clear(),
+                          )
+                        : null,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Builder(builder: (context) {
+                  final query = _busquedaInsumo.trim().toLowerCase();
+                  final filtrados = query.isEmpty
+                      ? insumosProvider.insumos
+                      : insumosProvider.insumos
+                          .where((i) => i.nombre.toLowerCase().contains(query))
+                          .toList();
 
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: filtrados
-                      .map(
-                        (i) => ActionChip(
-                          avatar: const Icon(Icons.add, size: 18),
-                          label: Text(i.nombre),
-                          onPressed: () => _mostrarDialogoLinea(i),
+                  if (query.isEmpty) return const SizedBox.shrink();
+
+                  if (filtrados.isEmpty) {
+                    return Wrap(
+                      children: [
+                        ActionChip(
+                          avatar: const Icon(Icons.add_circle_outline, size: 18),
+                          label: Text('Crear "${_busquedaInsumo.trim()}"'),
+                          onPressed: () => _crearInsumo(_busquedaInsumo.trim()),
                         ),
-                      )
-                      .toList(),
-                );
-              }),
+                      ],
+                    );
+                  }
+
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: filtrados
+                        .map(
+                          (i) => ActionChip(
+                            avatar: const Icon(Icons.add, size: 18),
+                            label: Text(i.nombre),
+                            onPressed: () => _mostrarDialogoLinea(i),
+                          ),
+                        )
+                        .toList(),
+                  );
+                }),
+              ],
             ],
+
             const SizedBox(height: 16),
             const Divider(),
 
-            // Carrito
+            // ── Carrito ──
             Expanded(
-              child: _carrito.isEmpty
-                  ? const Center(child: Text('Agrega insumos tocando los chips de arriba'))
-                  : ListView.builder(
-                      itemCount: _carrito.length,
-                      itemBuilder: (context, index) {
-                        final linea = _carrito[index];
-                        return ListTile(
-                          title: Text(linea.insumo.nombre),
-                          subtitle: Text(
-                            '${formatPrecio(linea.precioUnitario)} x ${formatMonto(linea.cantidad)} = ${formatPrecio(linea.subtotal)}',
-                          ),
-                          onTap: () => _mostrarDialogoLinea(linea.insumo, existente: linea),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => _quitarLinea(linea),
-                          ),
-                        );
-                      },
-                    ),
+              child: _modoRapido
+                  ? (_carritoRapido.isEmpty
+                      ? const Center(child: Text('Agrega conceptos usando los campos de arriba'))
+                      : ListView.builder(
+                          itemCount: _carritoRapido.length,
+                          itemBuilder: (context, index) {
+                            final linea = _carritoRapido[index];
+                            return ListTile(
+                              title: Text(linea.concepto),
+                              subtitle: Text(formatPrecio(linea.precio)),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => setState(() => _carritoRapido.remove(linea)),
+                              ),
+                            );
+                          },
+                        ))
+                  : (_carrito.isEmpty
+                      ? const Center(child: Text('Agrega insumos tocando los chips de arriba'))
+                      : ListView.builder(
+                          itemCount: _carrito.length,
+                          itemBuilder: (context, index) {
+                            final linea = _carrito[index];
+                            return ListTile(
+                              title: Text(linea.insumo.nombre),
+                              subtitle: Text(
+                                '${formatPrecio(linea.precioUnitario)} x ${formatMonto(linea.cantidad)} = ${formatPrecio(linea.subtotal)}',
+                              ),
+                              onTap: () => _mostrarDialogoLinea(linea.insumo, existente: linea),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => _quitarLinea(linea),
+                              ),
+                            );
+                          },
+                        )),
             ),
+
             const Divider(),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -412,7 +554,7 @@ class _NuevoGastoScreenState extends State<NuevoGastoScreen> {
                 children: [
                   Text('Total estimado', style: Theme.of(context).textTheme.titleMedium),
                   Text(
-                    formatPrecio(_total),
+                    formatPrecio(_modoRapido ? totalRapido : _total),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ],

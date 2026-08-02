@@ -2,14 +2,16 @@ import 'insumo.dart';
 
 class DetalleGasto {
   final int? id;
-  final int insumoId;
+  final int? insumoId;
+  final String? concepto;
   final double cantidad;
   final double precioUnitario;
   final Insumo? insumo;
 
   DetalleGasto({
     this.id,
-    required this.insumoId,
+    this.insumoId,
+    this.concepto,
     required this.cantidad,
     required this.precioUnitario,
     this.insumo,
@@ -18,7 +20,8 @@ class DetalleGasto {
   factory DetalleGasto.fromJson(Map<String, dynamic> json) {
     return DetalleGasto(
       id: json['id'] as int?,
-      insumoId: json['insumoId'] as int,
+      insumoId: json['insumoId'] as int?,
+      concepto: json['concepto'] as String?,
       cantidad: (json['cantidad'] as num).toDouble(),
       precioUnitario: (json['precioUnitario'] as num).toDouble(),
       insumo: json['insumo'] != null
@@ -29,12 +32,20 @@ class DetalleGasto {
 
   double get subtotal => cantidad * precioUnitario;
 
-  /// Lo que se envía al backend al crear un gasto. A diferencia de las ventas,
-  /// aquí sí se manda el precioUnitario: es lo que efectivamente se pagó,
-  /// no hay un precio "oficial" en el catálogo de insumos.
-  Map<String, dynamic> toCreateJson() => {
+  String get nombre => insumo?.nombre ?? concepto ?? (insumoId != null ? 'Insumo #$insumoId' : 'Ítem');
+
+  Map<String, dynamic> toCreateJson() {
+    if (insumoId != null) {
+      return {
         'insumoId': insumoId,
         'cantidad': cantidad,
         'precioUnitario': precioUnitario,
       };
+    }
+    return {
+      'concepto': concepto,
+      'cantidad': cantidad,
+      'precioUnitario': precioUnitario,
+    };
+  }
 }

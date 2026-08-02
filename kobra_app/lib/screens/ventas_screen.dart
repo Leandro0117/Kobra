@@ -52,6 +52,8 @@ class _VentasScreenState extends State<VentasScreen> {
   Set<EstadoVenta> _filtroEstados = {};
   int? _filtroClienteId;
   String? _filtroClienteNombre;
+  late DateTime _filtroDesde;
+  late DateTime _filtroHasta;
   final _captureKey = GlobalKey();
   bool _compartiendo = false;
 
@@ -60,19 +62,21 @@ class _VentasScreenState extends State<VentasScreen> {
   @override
   void initState() {
     super.initState();
+    final mesActual = FiltroVentas.mesActual();
+    _filtroDesde = mesActual.desde!;
+    _filtroHasta = mesActual.hasta!;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<VentasProvider>().cargar();
+      context.read<VentasProvider>().cargar(filtro: FiltroVentas.mesActual());
       context.read<ClientesProvider>().cargar();
     });
   }
 
   Future<void> _abrirFiltros() async {
-    final esAdmin =
-        context.read<AuthProvider>().usuario?.rol == Rol.ADMIN;
+    final esAdmin = context.read<AuthProvider>().usuario?.rol == Rol.ADMIN;
     final clientes = context.read<ClientesProvider>().clientes;
 
     final result = await showModalBottomSheet<
-        ({Set<EstadoVenta> estados, int? clienteId, String? clienteNombre})>(
+        ({Set<EstadoVenta> estados, int? clienteId, String? clienteNombre, DateTime desde, DateTime hasta})>(
       context: context,
       isScrollControlled: true,
       builder: (_) => _FiltroSheet(
@@ -81,6 +85,8 @@ class _VentasScreenState extends State<VentasScreen> {
         clienteNombreActual: _filtroClienteNombre,
         clientes: clientes,
         esAdmin: esAdmin,
+        desdeActual: _filtroDesde,
+        hastaActual: _filtroHasta,
       ),
     );
 
@@ -89,11 +95,17 @@ class _VentasScreenState extends State<VentasScreen> {
       _filtroEstados = result.estados;
       _filtroClienteId = result.clienteId;
       _filtroClienteNombre = result.clienteNombre;
+      _filtroDesde = result.desde;
+      _filtroHasta = result.hasta;
     });
     if (!mounted) return;
-    context
-        .read<VentasProvider>()
-        .cargar(filtro: FiltroVentas(clienteId: result.clienteId));
+    context.read<VentasProvider>().cargar(
+          filtro: FiltroVentas(
+            clienteId: result.clienteId,
+            desde: result.desde,
+            hasta: result.hasta,
+          ),
+        );
   }
 
   Future<void> _compartirVista() async {
@@ -249,7 +261,7 @@ class _VentasScreenState extends State<VentasScreen> {
                                           ),
                                     ),
                                     Text(
-                                      venta.cliente?.nombre ?? 'Cliente #${venta.clienteId}',
+                                      venta.cliente?.nombre ?? 'Venta rápida',
                                       style: Theme.of(context).textTheme.bodyLarge,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -343,8 +355,13 @@ class _VentasScreenState extends State<VentasScreen> {
             alignment: Alignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.filter_alt_outlined),
-                tooltip: 'Filtrar',
+                icon: Icon(
+                  _hayFiltros ? Icons.filter_alt : Icons.filter_alt_outlined,
+                  color: _hayFiltros
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                tooltip: _hayFiltros ? 'Filtros activos' : 'Filtrar',
                 onPressed: _abrirFiltros,
               ),
               if (_hayFiltros)
@@ -352,11 +369,15 @@ class _VentasScreenState extends State<VentasScreen> {
                   top: 8,
                   right: 8,
                   child: Container(
-                    width: 8,
-                    height: 8,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.error,
+                      color: Theme.of(context).colorScheme.primary,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.surface,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -442,6 +463,8 @@ class _FiltroSheet extends StatefulWidget {
   final String? clienteNombreActual;
   final List<Cliente> clientes;
   final bool esAdmin;
+  final DateTime desdeActual;
+  final DateTime hastaActual;
 
   const _FiltroSheet({
     required this.estadosActuales,
@@ -449,6 +472,8 @@ class _FiltroSheet extends StatefulWidget {
     required this.clienteNombreActual,
     required this.clientes,
     required this.esAdmin,
+    required this.desdeActual,
+    required this.hastaActual,
   });
 
   @override
@@ -459,8 +484,26 @@ class _FiltroSheetState extends State<_FiltroSheet> {
   late Set<EstadoVenta> _estados;
   int? _clienteId;
   String? _clienteNombre;
+  late DateTime _desde;
+  late DateTime _hasta;
   final _searchController = TextEditingController();
   List<Cliente> _filtrados = [];
+
+  static String _fmtFecha(DateTime d) => DateFormat('d MMM', 'es').format(d);
+
+  bool get _esMesActual {
+    final m = FiltroVentas.mesActual();
+    return _desde.isAtSameMomentAs(m.desde!) && _hasta.isAtSameMomentAs(m.hasta!);
+  }
+
+  bool get _esMesAnterior {
+    final now = DateTime.now();
+    final d = DateTime(now.year, now.month - 1, 1);
+    final h = DateTime(now.year, now.month, 0, 23, 59, 59);
+    return _desde.isAtSameMomentAs(d) && _hasta.isAtSameMomentAs(h);
+  }
+
+  bool get _esTodo => _desde.year == 2000 && _desde.month == 1 && _desde.day == 1;
 
   @override
   void initState() {
@@ -468,6 +511,8 @@ class _FiltroSheetState extends State<_FiltroSheet> {
     _estados = Set.from(widget.estadosActuales);
     _clienteId = widget.clienteIdActual;
     _clienteNombre = widget.clienteNombreActual;
+    _desde = widget.desdeActual;
+    _hasta = widget.hastaActual;
     _filtrados = widget.clientes;
     _searchController.addListener(_filtrar);
   }
@@ -494,15 +539,40 @@ class _FiltroSheetState extends State<_FiltroSheet> {
       estados: _estados,
       clienteId: _clienteId,
       clienteNombre: _clienteNombre,
+      desde: _desde,
+      hasta: _hasta,
     ));
   }
 
   void _limpiar() {
+    final m = FiltroVentas.mesActual();
     Navigator.of(context).pop((
       estados: <EstadoVenta>{},
       clienteId: null,
       clienteNombre: null,
+      desde: m.desde!,
+      hasta: m.hasta!,
     ));
+  }
+
+  Future<void> _abrirPicker() async {
+    final firstDate = DateTime(2020);
+    final lastDate = DateTime.now().add(const Duration(days: 365));
+    final safeDesde = _desde.isBefore(firstDate) ? firstDate : (_desde.isAfter(lastDate) ? lastDate : _desde);
+    final safeHasta = _hasta.isAfter(lastDate) ? lastDate : (_hasta.isBefore(firstDate) ? firstDate : _hasta);
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      initialDateRange: DateTimeRange(start: safeDesde, end: safeHasta),
+      locale: const Locale('es'),
+    );
+    if (range != null) {
+      setState(() {
+        _desde = range.start;
+        _hasta = DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59);
+      });
+    }
   }
 
   @override
@@ -547,6 +617,53 @@ class _FiltroSheetState extends State<_FiltroSheet> {
                 controller: scrollController,
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                 children: [
+                  // ── Período ──
+                  Text('Período',
+                      style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilterChip(
+                        label: const Text('Este mes'),
+                        selected: _esMesActual,
+                        onSelected: (_) {
+                          final m = FiltroVentas.mesActual();
+                          setState(() { _desde = m.desde!; _hasta = m.hasta!; });
+                        },
+                      ),
+                      FilterChip(
+                        label: const Text('Mes anterior'),
+                        selected: _esMesAnterior,
+                        onSelected: (_) {
+                          final now = DateTime.now();
+                          setState(() {
+                            _desde = DateTime(now.year, now.month - 1, 1);
+                            _hasta = DateTime(now.year, now.month, 0, 23, 59, 59);
+                          });
+                        },
+                      ),
+                      FilterChip(
+                        label: const Text('Todo'),
+                        selected: _esTodo,
+                        onSelected: (_) => setState(() {
+                          _desde = DateTime(2000);
+                          _hasta = DateTime(2100, 12, 31, 23, 59, 59);
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _abrirPicker,
+                    icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                    label: Text(
+                      _esTodo ? 'Rango personalizado' : '${_fmtFecha(_desde)} – ${_fmtFecha(_hasta)}',
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
                   // ── Estado ──
                   Text('Estado',
                       style: Theme.of(context).textTheme.labelLarge),

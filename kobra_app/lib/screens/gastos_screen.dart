@@ -47,14 +47,23 @@ class GastosScreen extends StatefulWidget {
 class _GastosScreenState extends State<GastosScreen> {
   late CategoriaGasto? _filtroCategoria;
   int? _filtroProveedorId;
+  late DateTime _filtroDesde;
+  late DateTime _filtroHasta;
 
   @override
   void initState() {
     super.initState();
     _filtroCategoria = widget.categoriaInicial;
+    final mesActual = FiltroGastos.mesActual();
+    _filtroDesde = mesActual.desde!;
+    _filtroHasta = mesActual.hasta!;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<GastosProvider>().cargar(
-            filtro: FiltroGastos(categoria: _filtroCategoria),
+            filtro: FiltroGastos(
+              categoria: _filtroCategoria,
+              desde: _filtroDesde,
+              hasta: _filtroHasta,
+            ),
           );
       context.read<ProveedoresProvider>().cargar();
     });
@@ -62,8 +71,50 @@ class _GastosScreenState extends State<GastosScreen> {
 
   void _aplicarFiltros() {
     context.read<GastosProvider>().cargar(
-          filtro: FiltroGastos(proveedorId: _filtroProveedorId, categoria: _filtroCategoria),
+          filtro: FiltroGastos(
+            proveedorId: _filtroProveedorId,
+            categoria: _filtroCategoria,
+            desde: _filtroDesde,
+            hasta: _filtroHasta,
+          ),
         );
+  }
+
+  bool get _esMesActual {
+    final m = FiltroGastos.mesActual();
+    return _filtroDesde.isAtSameMomentAs(m.desde!) && _filtroHasta.isAtSameMomentAs(m.hasta!);
+  }
+
+  bool get _esMesAnterior {
+    final now = DateTime.now();
+    final d = DateTime(now.year, now.month - 1, 1);
+    final h = DateTime(now.year, now.month, 0, 23, 59, 59);
+    return _filtroDesde.isAtSameMomentAs(d) && _filtroHasta.isAtSameMomentAs(h);
+  }
+
+  bool get _esTodo => _filtroDesde.year == 2000 && _filtroDesde.month == 1 && _filtroDesde.day == 1;
+
+  static String _fmtFecha(DateTime d) => DateFormat('d MMM', 'es').format(d);
+
+  Future<void> _abrirPickerFecha() async {
+    final firstDate = DateTime(2020);
+    final lastDate = DateTime.now().add(const Duration(days: 365));
+    final safeDesde = _filtroDesde.isBefore(firstDate) ? firstDate : (_filtroDesde.isAfter(lastDate) ? lastDate : _filtroDesde);
+    final safeHasta = _filtroHasta.isAfter(lastDate) ? lastDate : (_filtroHasta.isBefore(firstDate) ? firstDate : _filtroHasta);
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      initialDateRange: DateTimeRange(start: safeDesde, end: safeHasta),
+      locale: const Locale('es'),
+    );
+    if (range != null && mounted) {
+      setState(() {
+        _filtroDesde = range.start;
+        _filtroHasta = DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59);
+      });
+      _aplicarFiltros();
+    }
   }
 
   Future<void> _confirmarEliminar(Gasto gasto) async {
@@ -72,7 +123,7 @@ class _GastosScreenState extends State<GastosScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Eliminar gasto'),
         content: Text(
-          '¿Eliminar el gasto de "${gasto.proveedor?.nombre ?? 'proveedor #${gasto.proveedorId}'}" '
+          '¿Eliminar el gasto de "${gasto.proveedor?.nombre ?? (gasto.proveedorId != null ? 'proveedor #${gasto.proveedorId}' : 'gasto rápido')}" '
           'por ${formatPrecio(gasto.total)}? Esta acción no se puede deshacer.',
         ),
         actions: [
@@ -110,7 +161,7 @@ class _GastosScreenState extends State<GastosScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: Row(
               children: [
                 Expanded(
@@ -153,6 +204,56 @@ class _GastosScreenState extends State<GastosScreen> {
                       _aplicarFiltros();
                     },
                   ),
+                ),
+              ],
+            ),
+          ),
+          // ── Período ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: Row(
+              children: [
+                _PeriodoChip(
+                  label: 'Este mes',
+                  selected: _esMesActual,
+                  onTap: () {
+                    final m = FiltroGastos.mesActual();
+                    setState(() { _filtroDesde = m.desde!; _filtroHasta = m.hasta!; });
+                    _aplicarFiltros();
+                  },
+                ),
+                const SizedBox(width: 8),
+                _PeriodoChip(
+                  label: 'Mes anterior',
+                  selected: _esMesAnterior,
+                  onTap: () {
+                    final now = DateTime.now();
+                    setState(() {
+                      _filtroDesde = DateTime(now.year, now.month - 1, 1);
+                      _filtroHasta = DateTime(now.year, now.month, 0, 23, 59, 59);
+                    });
+                    _aplicarFiltros();
+                  },
+                ),
+                const SizedBox(width: 8),
+                _PeriodoChip(
+                  label: 'Todo',
+                  selected: _esTodo,
+                  onTap: () {
+                    setState(() {
+                      _filtroDesde = DateTime(2000);
+                      _filtroHasta = DateTime(2100, 12, 31, 23, 59, 59);
+                    });
+                    _aplicarFiltros();
+                  },
+                ),
+                const Spacer(),
+                IconButton.outlined(
+                  tooltip: _esTodo
+                      ? 'Seleccionar rango'
+                      : '${_fmtFecha(_filtroDesde)} – ${_fmtFecha(_filtroHasta)}',
+                  icon: const Icon(Icons.calendar_month_outlined, size: 20),
+                  onPressed: _abrirPickerFecha,
                 ),
               ],
             ),
@@ -268,7 +369,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                                 ),
                                                 const SizedBox(height: 2),
                                                 ...gasto.detalles.map((d) {
-                                                  final nombre = d.insumo?.nombre ?? 'Insumo #${d.insumoId}';
+                                                  final nombre = d.nombre;
                                                   final prefix = d.cantidad > 1 ? '${cantidadStr(d.cantidad)} ' : '';
                                                   return Text(
                                                     '$prefix$nombre',
@@ -277,7 +378,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                                 }),
                                                 const SizedBox(height: 2),
                                                 Text(
-                                                  gasto.proveedor?.nombre ?? 'Proveedor #${gasto.proveedorId}',
+                                                  gasto.proveedor?.nombre ?? (gasto.proveedorId != null ? 'Proveedor #${gasto.proveedorId}' : 'Sin proveedor'),
                                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                                         color: Theme.of(context).colorScheme.outline,
                                                       ),
@@ -322,6 +423,37 @@ class _GastosScreenState extends State<GastosScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PeriodoChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PeriodoChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? cs.primaryContainer : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              ),
+        ),
       ),
     );
   }

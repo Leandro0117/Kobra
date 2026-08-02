@@ -43,6 +43,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
   MedioPago? _medioPagoSeleccionado;
   final List<_LineaCarrito> _carrito = [];
   bool _guardando = false;
+  bool _modoRapido = false;
 
   TipoDescuento _tipoDescuento = TipoDescuento.PORCENTAJE;
   final _descuentoController = TextEditingController();
@@ -296,7 +297,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
   }
 
   Future<void> _guardarVenta() async {
-    if (_clienteSeleccionado == null) {
+    if (!_modoRapido && _clienteSeleccionado == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Selecciona un cliente')));
@@ -334,7 +335,7 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
         _fechaVenta.day == hoy.day;
 
     final venta = await ventasProvider.crear(
-      clienteId: _clienteSeleccionado!.id,
+      clienteId: _modoRapido ? null : _clienteSeleccionado?.id,
       detalles: detalles,
       estado: _estadoSeleccionado,
       descuento: double.tryParse(_descuentoController.text) ?? 0,
@@ -406,7 +407,22 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Nueva venta')),
+        appBar: AppBar(
+          title: Text(_modoRapido ? 'Nueva venta rápida' : 'Nueva venta'),
+          actions: [
+            IconButton(
+              tooltip: _modoRapido ? 'Modo normal' : 'Venta rápida (sin cliente)',
+              icon: Icon(
+                Icons.bolt,
+                color: _modoRapido ? Colors.purple : null,
+              ),
+              onPressed: () => setState(() {
+                _modoRapido = !_modoRapido;
+                _clienteSeleccionado = null;
+              }),
+            ),
+          ],
+        ),
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -497,36 +513,38 @@ class _NuevaVentaScreenState extends State<NuevaVentaScreen> {
               ],
               const SizedBox(height: 12),
 
-              // ── Selector de cliente con búsqueda ──
-              if (clientesProvider.cargando)
-                EstadoCargando(
-                  avisoServidorLento: clientesProvider.avisoServidorLento,
-                )
-              else if (clientesProvider.error != null)
-                EstadoError(
-                  mensaje: clientesProvider.error!,
-                  onReintentar: () => clientesProvider.cargar(),
-                )
-              else
-                GestureDetector(
-                  onTap: () => _seleccionarCliente(clientesProvider.clientes),
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Cliente',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.search),
-                    ),
-                    child: Text(
-                      _clienteSeleccionado?.nombre ?? 'Buscar cliente…',
-                      style: TextStyle(
-                        color: _clienteSeleccionado != null
-                            ? Theme.of(context).textTheme.bodyLarge?.color
-                            : Theme.of(context).hintColor,
+              // ── Selector de cliente (oculto en modo rápido) ──
+              if (!_modoRapido) ...[
+                if (clientesProvider.cargando)
+                  EstadoCargando(
+                    avisoServidorLento: clientesProvider.avisoServidorLento,
+                  )
+                else if (clientesProvider.error != null)
+                  EstadoError(
+                    mensaje: clientesProvider.error!,
+                    onReintentar: () => clientesProvider.cargar(),
+                  )
+                else
+                  GestureDetector(
+                    onTap: () => _seleccionarCliente(clientesProvider.clientes),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Cliente',
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.search),
+                      ),
+                      child: Text(
+                        _clienteSeleccionado?.nombre ?? 'Buscar cliente…',
+                        style: TextStyle(
+                          color: _clienteSeleccionado != null
+                              ? Theme.of(context).textTheme.bodyLarge?.color
+                              : Theme.of(context).hintColor,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
+              ],
               _buildFechasSection(),
               const Divider(height: 1),
 
@@ -790,9 +808,9 @@ class _BuscadorClientesState extends State<_BuscadorClientes> {
     final sinResultados = _filtrados.isEmpty && query.isNotEmpty;
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
         return Padding(
